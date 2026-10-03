@@ -18,9 +18,10 @@ export const registerSchema = z
       .email("Please enter a valid email address"),
 
     phone: z
-      .string()
-      .trim()
-      .optional(),
+  .string()
+  .trim()
+  .regex(/^\d+$/, "Phone number must contain only numbers")
+  .length(10, "Phone number must be exactly 10 digits"),
 
     password: z
       .string()
@@ -48,4 +49,7 @@ export const registerSchema = z
     .string()
     .min(1, "Password is required"),
 });
-export type RegisterSchemaInput = z.infer<typeof registerSchema>;
+
+export type LoginFormValues = z.infer<typeof loginSchema>;
+
+export type RegisterFormValues = z.infer<typeof registerSchema>;
