@@ -12,6 +12,12 @@ interface RoleRow extends RowDataPacket {
   name: string;
 }
 
+
+interface ExistingUserRow extends RowDataPacket {
+  id: number;
+}
+
+
 export async function createEmployeeProfile(
   connection: PoolConnection,
   userId: number,
@@ -58,6 +64,49 @@ export async function findRoleById(
       LIMIT 1
     `,
     [roleId]
+  );
+
+  return rows.length > 0 ? rows[0] : null;
+}
+
+
+
+export async function findUserByEmailInOrganization(
+  connection: PoolConnection,
+  organizationId: number,
+  email: string
+): Promise<ExistingUserRow | null> {
+  const [rows] = await connection.execute<ExistingUserRow[]>(
+    `
+      SELECT id
+      FROM users
+      WHERE organization_id = ?
+        AND email = ?
+      LIMIT 1
+    `,
+    [organizationId, email]
+  );
+
+  return rows.length > 0 ? rows[0] : null;
+}
+
+
+
+export async function findEmployeeCodeInOrganization(
+  connection: PoolConnection,
+  organizationId: number,
+  employeeCode: string
+): Promise<ExistingUserRow | null> {
+  const [rows] = await connection.execute<ExistingUserRow[]>(
+    `
+      SELECT u.id
+      FROM employee_profiles AS ep
+      INNER JOIN users AS u ON u.id = ep.user_id
+      WHERE u.organization_id = ?
+        AND ep.employee_code = ?
+      LIMIT 1
+    `,
+    [organizationId, employeeCode]
   );
 
   return rows.length > 0 ? rows[0] : null;

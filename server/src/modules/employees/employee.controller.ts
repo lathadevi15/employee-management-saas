@@ -1,7 +1,12 @@
 
 import { Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
-import { authorizeEmployeeCreation } from "./employee.service.js";
+import { createEmployeeSchema } from "./employee.schema.js";
+import {
+  authorizeEmployeeCreation,
+  createEmployee,
+} from "./employee.service.js";
+
 
 export async function createEmployeeController(
   req: AuthenticatedRequest,
@@ -14,31 +19,73 @@ export async function createEmployeeController(
     });
   }
 
-  try {
-    const { roleId } = req.user;
+  // 1. Validate the request body.
+  const validationResult = createEmployeeSchema.safeParse(req.body);
 
-    await authorizeEmployeeCreation(roleId);
-
-    return res.status(501).json({
+  if (!validationResult.success) {
+    return res.status(400).json({
       success: false,
-      message: "Authorization passed. Employee creation is not implemented yet.",
+      message: "Validation failed",
+      errors: validationResult.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    // 2. Authorize the requester.
+    await authorizeEmployeeCreation(req.user.roleId);
+
+    // 3. Create the employee using the verified organization ID.
+    const employee = await createEmployee(
+      validationResult.data,
+      req.user.organizationId
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Employee created successfully",
+      data: employee,
     });
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "FORBIDDEN_EMPLOYEE_CREATION"
-    ) {
-      return res.status(403).json({
+    if (!(error instanceof Error)) {
+      return res.status(500).json({
         success: false,
-        message: "You are not allowed to create employees",
+        message: "An unexpected error occurred",
       });
     }
 
-    console.error("Employee authorization error:", error);
+    switch (error.message) {
+      case "FORBIDDEN_EMPLOYEE_CREATION":
+        return res.status(403).json({
+          success: false,
+          message: "You are not allowed to create employees",
+        });
 
-    return res.status(500).json({
-      success: false,
-      message: "Unable to authorize employee creation",
-    });
+      case "INVALID_EMPLOYEE_ROLE":
+        return res.status(400).json({
+          success: false,
+          message: "Invalid employee role",
+        });
+
+      case "EMPLOYEE_EMAIL_EXISTS":
+        return res.status(409).json({
+          success: false,
+          message: "An account with this email already exists",
+        });
+
+      case "EMPLOYEE_CODE_EXISTS":
+        return res.status(409).json({
+          success: false,
+          message: "This employee code is already in use",
+        });
+
+      default:
+        console.error("Employee creation error:", error);
+
+        return res.status(500).json({
+          success: false,
+          message: "Unable to create employee",
+        });
+    }
   }
 }
+

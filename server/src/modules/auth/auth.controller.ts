@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { registerSchema, loginSchema } from "./auth.schema.js";
 import { loginUser, registerUser } from "./auth.service.js";
-import { authorizeEmployeeCreation } from "./employee.service.js";
+
 import {
   AuthenticatedRequest,
 } from "../../middleware/auth.middleware.js";
