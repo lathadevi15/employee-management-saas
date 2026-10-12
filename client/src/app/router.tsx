@@ -7,6 +7,7 @@ import LoginPage from "../features/auth/pages/LoginPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
+import CreateEmployeePage from "../features/employees/pages/CreateEmployeePage";
 
 export const router = createBrowserRouter([
   {
@@ -24,13 +25,19 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
 
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        path: "/dashboard",
-        element: <DashboardPage />,
-      },
-    ],
-  },
+  
+{
+  element: <ProtectedRoute />,
+  children: [
+    {
+      path: "/dashboard",
+      element: <DashboardPage />,
+    },
+    {
+      path: "/employees/new",
+      element: <CreateEmployeePage />,
+    },
+  ],
+},
+
 ]);
