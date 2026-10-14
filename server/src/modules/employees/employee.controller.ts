@@ -5,8 +5,8 @@ import { createEmployeeSchema } from "./employee.schema.js";
 import {
   authorizeEmployeeCreation,
   createEmployee,
+  getEmployees,
 } from "./employee.service.js";
-
 
 export async function createEmployeeController(
   req: AuthenticatedRequest,
@@ -89,3 +89,33 @@ export async function createEmployeeController(
   }
 }
 
+export async function getEmployeesController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+
+  try {
+    // Always use the organization from the authenticated user.
+    const employees = await getEmployees(
+      req.user.organizationId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: employees,
+    });
+  } catch (error) {
+    console.error("Get employees error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch employees",
+    });
+  }
+}

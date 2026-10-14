@@ -2,6 +2,7 @@ import {
   createBrowserRouter,
   Navigate,
 } from "react-router-dom";
+import EmployeeListPage from "../features/employees/pages/EmployeeListPage";
 
 import LoginPage from "../features/auth/pages/LoginPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
       path: "/employees/new",
       element: <CreateEmployeePage />,
     },
+    { path: "/employees", element: <EmployeeListPage /> },
   ],
 },
 

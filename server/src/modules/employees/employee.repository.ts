@@ -7,6 +7,7 @@ import {
 
 
 
+
 interface RoleRow extends RowDataPacket {
   id: number;
   name: string;
@@ -110,4 +111,34 @@ export async function findEmployeeCodeInOrganization(
   );
 
   return rows.length > 0 ? rows[0] : null;
+}
+
+
+export async function findEmployeesByOrganization(
+  connection: PoolConnection,
+  organizationId: number
+) {
+  const [rows] = await connection.execute(
+    `SELECT
+       u.id,
+       u.name,
+       u.email,
+       u.phone,
+       u.status,
+       r.name AS role,
+       ep.employee_code AS employeeCode,
+       ep.job_title AS jobTitle,
+       ep.department,
+       ep.joining_date AS joiningDate
+     FROM users u
+     INNER JOIN employee_profiles ep
+       ON ep.user_id = u.id
+     INNER JOIN roles r
+       ON r.id = u.role_id
+     WHERE u.organization_id = ?
+     ORDER BY u.created_at DESC`,
+    [organizationId]
+  );
+
+  return rows;
 }

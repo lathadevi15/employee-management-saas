@@ -44,3 +44,28 @@ export async function createEmployee(
 
   return response.data.data;
 }
+
+export interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  role: string;
+  employeeCode: string;
+  jobTitle: string | null;
+  department: string | null;
+  joiningDate: string | null;
+}
+
+interface GetEmployeesResponse {
+  success: boolean;
+  data: Employee[];
+}
+
+export async function getEmployees(): Promise<Employee[]> {
+  const response =
+    await apiClient.get<GetEmployeesResponse>("/employees");
+
+  return response.data.data;
+}

@@ -10,6 +10,7 @@ import {
   findEmployeeCodeInOrganization,
   findRoleById,
   findUserByEmailInOrganization,
+  findEmployeesByOrganization
 } from "./employee.repository.js";
 
 
@@ -114,6 +115,22 @@ export async function createEmployee(
   } catch (error) {
     await connection.rollback();
     throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+
+export async function getEmployees(organizationId: number) {
+  const connection = await db.getConnection();
+
+  try {
+    const employees = await findEmployeesByOrganization(
+      connection,
+      organizationId
+    );
+
+    return employees;
   } finally {
     connection.release();
   }
