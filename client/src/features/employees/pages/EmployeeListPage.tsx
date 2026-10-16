@@ -4,6 +4,7 @@ import {
   getEmployees,
   type Employee,
 } from "../services/employee-api";
+import { Link } from "react-router-dom";
 
 
 export default function EmployeeListPage() {
@@ -174,6 +175,7 @@ const filteredEmployees = employees.filter((employee) => {
                 <th className="p-3">Department</th>
                 <th className="p-3">Job Title</th>
                 <th className="p-3">Status</th>
+                <th className="p-3 text-left">Actions</th>
               </tr>
             </thead>
 
@@ -203,6 +205,15 @@ const filteredEmployees = employees.filter((employee) => {
   >
     {employee.status}
   </span>
+</td>
+
+<td className="p-3">
+  <Link
+    to={`/employees/${employee.id}/edit`}
+    className="inline-flex rounded-lg border border-purple-200 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-50"
+  >
+    Edit
+  </Link>
 </td>
 
                 </tr>

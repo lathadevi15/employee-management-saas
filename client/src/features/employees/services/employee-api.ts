@@ -69,3 +69,28 @@ export async function getEmployees(): Promise<Employee[]> {
 
   return response.data.data;
 }
+
+
+export interface UpdateEmployeeInput {
+  name: string;
+  email: string;
+  phone?: string;
+  role: "manager" | "employee";
+  employeeCode: string;
+  jobTitle?: string;
+  department?: string;
+  joiningDate?: string;
+}
+
+export async function updateEmployee(
+  userId: number,
+  input: UpdateEmployeeInput
+) {
+  const response = await apiClient.put(
+    `/employees/${userId}`,
+    input
+  );
+
+  return response.data.data;
+}
+

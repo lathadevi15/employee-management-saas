@@ -3,7 +3,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import EmployeeListPage from "../features/employees/pages/EmployeeListPage";
-
+import EditEmployeePage from "../features/employees/pages/EditEmployeePage";
 import LoginPage from "../features/auth/pages/LoginPage";
 import RegisterPage from "../features/auth/pages/RegisterPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
@@ -25,6 +25,10 @@ export const router = createBrowserRouter([
     path: "/login",
     element: <LoginPage />,
   },
+  {
+  path: "/employees/:id/edit",
+  element: <EditEmployeePage />,
+},
 
   
 {

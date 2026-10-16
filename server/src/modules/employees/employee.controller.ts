@@ -1,12 +1,14 @@
 
 import { Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
-import { createEmployeeSchema } from "./employee.schema.js";
+import { createEmployeeSchema, updateEmployeeSchema } from "./employee.schema.js";
 import {
   authorizeEmployeeCreation,
   createEmployee,
   getEmployees,
+  updateEmployee,
 } from "./employee.service.js";
+
 
 export async function createEmployeeController(
   req: AuthenticatedRequest,
@@ -119,3 +121,94 @@ export async function getEmployeesController(
     });
   }
 }
+
+
+export async function updateEmployeeController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+
+  const employeeId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid employee ID",
+    });
+  }
+
+  const validationResult = updateEmployeeSchema.safeParse(req.body);
+
+  if (!validationResult.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: validationResult.error.flatten().fieldErrors,
+    });
+  }
+
+  try {
+    // Only organization admins may update employees.
+    await authorizeEmployeeCreation(req.user.roleId);
+
+    const employee = await updateEmployee(
+      employeeId,
+      req.user.organizationId,
+      validationResult.data
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee updated successfully",
+      data: employee,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      switch (error.message) {
+        case "FORBIDDEN_EMPLOYEE_CREATION":
+          return res.status(403).json({
+            success: false,
+            message: "You are not allowed to update employees",
+          });
+
+        case "EMPLOYEE_NOT_FOUND":
+          return res.status(404).json({
+            success: false,
+            message: "Employee not found",
+          });
+
+        case "INVALID_EMPLOYEE_ROLE":
+          return res.status(400).json({
+            success: false,
+            message: "Invalid employee role",
+          });
+
+        case "EMPLOYEE_EMAIL_EXISTS":
+          return res.status(409).json({
+            success: false,
+            message: "An account with this email already exists",
+          });
+
+        case "EMPLOYEE_CODE_EXISTS":
+          return res.status(409).json({
+            success: false,
+            message: "This employee code is already in use",
+          });
+      }
+    }
+
+    console.error("Employee update error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update employee",
+    });
+  }
+}
+

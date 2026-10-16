@@ -142,3 +142,67 @@ export async function findEmployeesByOrganization(
 
   return rows;
 }
+
+
+export async function updateEmployeeUser(
+  connection: PoolConnection,
+  userId: number,
+  organizationId: number,
+  data: {
+    name: string;
+    email: string;
+    phone?: string;
+    roleId: number;
+  }
+) {
+  const [result] = await connection.execute(
+    `UPDATE users
+     SET name = ?,
+         email = ?,
+         phone = ?,
+         role_id = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?
+       AND organization_id = ?`,
+    [
+      data.name,
+      data.email,
+      data.phone || null,
+      data.roleId,
+      userId,
+      organizationId,
+    ]
+  );
+
+  return result;
+}
+
+export async function updateEmployeeProfile(
+  connection: PoolConnection,
+  userId: number,
+  data: {
+    employeeCode: string;
+    jobTitle?: string;
+    department?: string;
+    joiningDate?: string;
+  }
+) {
+  const [result] = await connection.execute(
+    `UPDATE employee_profiles
+     SET employee_code = ?,
+         job_title = ?,
+         department = ?,
+         joining_date = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE user_id = ?`,
+    [
+      data.employeeCode,
+      data.jobTitle || null,
+      data.department || null,
+      data.joiningDate || null,
+      userId,
+    ]
+  );
+
+  return result;
+}
