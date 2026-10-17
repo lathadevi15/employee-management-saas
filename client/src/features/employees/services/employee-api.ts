@@ -1,6 +1,7 @@
 
 import apiClient from "@/services/api-client";
 
+
 export interface CreateEmployeeInput {
   name: string;
   email: string;
@@ -92,5 +93,9 @@ export async function updateEmployee(
   );
 
   return response.data.data;
+}
+
+export async function deleteEmployee(userId: number): Promise<void> {
+  await apiClient.delete(`/employees/${userId}`);
 }
 

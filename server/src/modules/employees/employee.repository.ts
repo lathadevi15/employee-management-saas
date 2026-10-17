@@ -206,3 +206,20 @@ export async function updateEmployeeProfile(
 
   return result;
 }
+
+
+export async function deleteEmployee(
+  connection: PoolConnection,
+  userId: number,
+  organizationId: number
+) {
+  const [result] = await connection.execute(
+    `DELETE FROM users
+     WHERE id = ?
+       AND organization_id = ?`,
+    [userId, organizationId]
+  );
+
+  return result;
+}
+

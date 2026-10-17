@@ -13,8 +13,8 @@ import {
   findEmployeesByOrganization,
   updateEmployeeUser,
 updateEmployeeProfile,
+deleteEmployee as deleteEmployeeRepository,
 } from "./employee.repository.js";
-
 
 
 
@@ -255,3 +255,57 @@ export async function updateEmployee(
     connection.release();
   }
 }
+
+
+export async function removeEmployee(
+  userId: number,
+  organizationId: number
+) {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1. Verify this is an employee or manager
+    // belonging to the authenticated organization.
+    const [rows] = await connection.execute(
+      `SELECT u.id
+       FROM users u
+       INNER JOIN employee_profiles ep ON ep.user_id = u.id
+       INNER JOIN roles r ON r.id = u.role_id
+       WHERE u.id = ?
+         AND u.organization_id = ?
+         AND r.name IN ('employee', 'manager')
+       FOR UPDATE`,
+      [userId, organizationId]
+    );
+
+    if ((rows as { id: number }[]).length === 0) {
+      throw new Error("EMPLOYEE_NOT_FOUND");
+    }
+
+    // 2. Delete the employee's user account.
+    const result = await deleteEmployeeRepository(
+      connection,
+      userId,
+      organizationId
+    );
+
+    // 3. Ensure a record was actually deleted.
+    const deleteResult = result as { affectedRows: number };
+
+    if (deleteResult.affectedRows !== 1) {
+      throw new Error("EMPLOYEE_NOT_FOUND");
+    }
+
+    await connection.commit();
+
+    return { id: userId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+

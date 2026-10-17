@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   getEmployees,
-  type Employee,
+  type Employee,deleteEmployee
 } from "../services/employee-api";
 import { Link } from "react-router-dom";
 
@@ -14,6 +14,8 @@ export default function EmployeeListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+const [deleteError, setDeleteError] = useState("");
 
         function clearFilters() {
   setSearchTerm("");
@@ -166,6 +168,11 @@ const filteredEmployees = employees.filter((employee) => {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
+          {deleteError && (
+  <p role="alert" className="mb-4 text-sm text-red-600">
+    {deleteError}
+  </p>
+)}
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -214,6 +221,18 @@ const filteredEmployees = employees.filter((employee) => {
   >
     Edit
   </Link>
+  
+<button
+  type="button"
+  onClick={() =>
+    handleDeleteEmployee(employee.id, employee.name)
+  }
+  disabled={deletingId === employee.id}
+  className="ml-2 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+>
+  {deletingId === employee.id ? "Deleting..." : "Delete"}
+</button>
+
 </td>
 
                 </tr>
@@ -224,6 +243,34 @@ const filteredEmployees = employees.filter((employee) => {
       )}
     </div>
   );
+  
+async function handleDeleteEmployee(
+  employeeId: number,
+  employeeName: string
+) {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete ${employeeName}? This action cannot be undone.`
+  );
+
+  if (!confirmed) return;
+
+  setDeletingId(employeeId);
+  setDeleteError("");
+
+  try {
+    await deleteEmployee(employeeId);
+
+    setEmployees((previous) =>
+      previous.filter((employee) => employee.id !== employeeId)
+    );
+  } catch (error) {
+    console.error("Employee deletion failed:", error);
+    setDeleteError("Unable to delete employee. Please try again.");
+  } finally {
+    setDeletingId(null);
+  }
+}
+
 }
 
 

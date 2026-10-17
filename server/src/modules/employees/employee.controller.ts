@@ -7,6 +7,7 @@ import {
   createEmployee,
   getEmployees,
   updateEmployee,
+  removeEmployee,
 } from "./employee.service.js";
 
 
@@ -212,3 +213,62 @@ export async function updateEmployeeController(
   }
 }
 
+
+export async function deleteEmployeeController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+
+  const employeeId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(employeeId) || employeeId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid employee ID",
+    });
+  }
+
+  try {
+    // Only organization admins may delete employees.
+    await authorizeEmployeeCreation(req.user.roleId);
+
+    await removeEmployee(
+      employeeId,
+      req.user.organizationId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee deleted successfully",
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      switch (error.message) {
+        case "FORBIDDEN_EMPLOYEE_CREATION":
+          return res.status(403).json({
+            success: false,
+            message: "You are not allowed to delete employees",
+          });
+
+        case "EMPLOYEE_NOT_FOUND":
+          return res.status(404).json({
+            success: false,
+            message: "Employee not found",
+          });
+      }
+    }
+
+    console.error("Employee deletion error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to delete employee",
+    });
+  }
+}

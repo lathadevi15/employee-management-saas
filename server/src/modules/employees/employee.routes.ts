@@ -5,6 +5,7 @@ import {
   createEmployeeController,
   getEmployeesController,
   updateEmployeeController,
+  deleteEmployeeController,
 } from "./employee.controller.js";
 
 const router = Router();
@@ -12,5 +13,6 @@ const router = Router();
 router.post("/", authenticate, createEmployeeController);
 router.get("/", authenticate, getEmployeesController);
 router.put("/:id", authenticate, updateEmployeeController);
+router.delete("/:id", authenticate, deleteEmployeeController);
 
 export default router;
