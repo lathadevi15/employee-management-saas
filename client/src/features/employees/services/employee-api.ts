@@ -81,6 +81,7 @@ export interface UpdateEmployeeInput {
   jobTitle?: string;
   department?: string;
   joiningDate?: string;
+  status: "active" | "inactive";
 }
 
 export async function updateEmployee(

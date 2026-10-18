@@ -70,22 +70,23 @@ export async function loginUser(
   try {
     const user = await findUserByEmail(connection, email);
 
-    if (!user) {
-      throw new Error("Invalid email or password");
-    }
+if (!user) {
+  throw new Error("Invalid email or password");
+}
 
-    if (user.status !== "active") {
-      throw new Error("User account is inactive");
-    }
+const passwordMatches = await bcrypt.compare(
+  password,
+  user.password_hash
+);
 
-    const passwordMatches = await bcrypt.compare(
-      password,
-      user.password_hash
-    );
+if (!passwordMatches) {
+  throw new Error("Invalid email or password");
+}
 
-    if (!passwordMatches) {
-      throw new Error("Invalid email or password");
-    }
+if (user.status !== "active") {
+  throw new Error("User account is inactive");
+}
+
 
     const jwtSecret = process.env.JWT_SECRET;
 

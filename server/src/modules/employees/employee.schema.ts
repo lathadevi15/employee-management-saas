@@ -52,6 +52,7 @@ export const updateEmployeeSchema = z.object({
       (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
       "Joining date must use YYYY-MM-DD format"
     ),
+    status: z.enum(["active", "inactive"]),
 });
 export type CreateEmployeeRequest = z.infer<
   typeof createEmployeeSchema

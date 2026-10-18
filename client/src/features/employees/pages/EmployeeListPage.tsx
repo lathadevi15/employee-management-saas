@@ -78,12 +78,26 @@ const filteredEmployees = employees.filter((employee) => {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Employees</h1>
-        <p className="mt-1 text-gray-500">
-          Manage employees in your organization.
-        </p>
-      </div>
+     
+<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <h1 className="text-2xl font-bold text-gray-900">
+      Employees
+    </h1>
+    <p className="mt-1 text-sm text-gray-500">
+      Manage employees in your organization.
+    </p>
+  </div>
+
+  <Link
+    to="/employees/create"
+    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+  >
+    <span className="text-lg leading-none">+</span>
+    Add Employee
+  </Link>
+</div>
+
 
 <div className="mb-4">
   <label

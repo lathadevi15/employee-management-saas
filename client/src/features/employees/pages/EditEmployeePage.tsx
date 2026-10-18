@@ -7,7 +7,6 @@ import {
   type UpdateEmployeeInput,
 } from "../services/employee-api";
 import { updateEmployeeSchema } from "../employee-schema";
-import { Link } from "react-router-dom";
 
 export default function EditEmployeePage() {
   const { id } = useParams();
@@ -22,12 +21,15 @@ export default function EditEmployeePage() {
     jobTitle: "",
     department: "",
     joiningDate: "",
+    status: "active",
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     async function loadEmployee() {
@@ -53,6 +55,10 @@ export default function EditEmployeePage() {
           joiningDate: employee.joiningDate
             ? employee.joiningDate.slice(0, 10)
             : "",
+          status:
+            employee.status === "inactive"
+              ? "inactive"
+              : "active",
         });
       } catch {
         setError("Unable to load employee details.");
@@ -65,42 +71,52 @@ export default function EditEmployeePage() {
   }, [id]);
 
   function handleChange(
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement
+    >
   ) {
     const { name, value } = event.target;
 
-    setForm((previous) => ({ ...previous, [name]: value }));
-    setFieldErrors((previous) => ({ ...previous, [name]: "" }));
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+
+    setFieldErrors((previous) => ({
+      ...previous,
+      [name]: "",
+    }));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
     setError("");
     setFieldErrors({});
 
-const validation = updateEmployeeSchema.safeParse(form);
+    const validation = updateEmployeeSchema.safeParse(form);
 
-if (!validation.success) {
-  console.error(
-    "Employee form validation failed:",
-    validation.error.issues
-  );
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
 
-  const errors: Record<string, string> = {};
+      validation.error.issues.forEach((issue) => {
+        const key = String(issue.path[0]);
 
-  validation.error.issues.forEach((issue) => {
-    const key = String(issue.path[0]);
+        if (!errors[key]) {
+          errors[key] = issue.message;
+        }
+      });
 
-    if (!errors[key]) {
-      errors[key] = issue.message;
+      setFieldErrors(errors);
+      return;
     }
-  });
 
-  setFieldErrors(errors);
-  return;
-}
-
-    if (!id || !Number.isSafeInteger(Number(id)) || Number(id) <= 0) {
+    if (
+      !id ||
+      !Number.isSafeInteger(Number(id)) ||
+      Number(id) <= 0
+    ) {
       setError("Invalid employee ID.");
       return;
     }
@@ -116,6 +132,7 @@ if (!validation.success) {
         jobTitle: data.jobTitle || undefined,
         department: data.department || undefined,
         joiningDate: data.joiningDate || undefined,
+        status: data.status,
       };
 
       await updateEmployee(Number(id), payload);
@@ -150,20 +167,35 @@ if (!validation.success) {
     { name: "name", label: "Full name", required: true },
     { name: "email", label: "Email", required: true },
     { name: "phone", label: "Phone", required: false },
-    { name: "employeeCode", label: "Employee code", required: true },
+    {
+      name: "employeeCode",
+      label: "Employee code",
+      required: true,
+    },
     { name: "jobTitle", label: "Job title", required: false },
     { name: "department", label: "Department", required: false },
-    { name: "joiningDate", label: "Joining date", required: false },
+    {
+      name: "joiningDate",
+      label: "Joining date",
+      required: false,
+    },
   ] as const;
 
   return (
     <div className="mx-auto max-w-3xl p-6">
-      <h1 className="mb-2 text-2xl font-bold">Edit Employee</h1>
+      <h1 className="mb-2 text-2xl font-bold">
+        Edit Employee
+      </h1>
+
       <p className="mb-6 text-sm text-gray-500">
         Update the employee's information below.
       </p>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="mb-4 text-sm text-red-600">
+          {error}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-5 sm:grid-cols-2">
@@ -180,7 +212,11 @@ if (!validation.success) {
               <input
                 id={field.name}
                 name={field.name}
-                type={field.name === "joiningDate" ? "date" : "text"}
+                type={
+                  field.name === "joiningDate"
+                    ? "date"
+                    : "text"
+                }
                 value={form[field.name] ?? ""}
                 onChange={handleChange}
                 required={field.required}
@@ -219,6 +255,41 @@ if (!validation.success) {
                 {fieldErrors.role}
               </p>
             )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="status"
+              className="mb-1 block text-sm font-medium"
+            >
+              Employee status *
+            </label>
+
+            <select
+              id="status"
+              name="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-500 focus:outline-none"
+            >
+              <option value="active">
+                Active
+              </option>
+              <option value="inactive">
+                Inactive
+              </option>
+            </select>
+
+            {fieldErrors.status && (
+              <p className="mt-1 text-sm text-red-600">
+                {fieldErrors.status}
+              </p>
+            )}
+
+            <p className="mt-1 text-xs text-gray-500">
+              Inactive employees should not be allowed to access
+              the application.
+            </p>
           </div>
         </div>
 

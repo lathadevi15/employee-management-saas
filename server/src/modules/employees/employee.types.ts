@@ -21,3 +21,15 @@ export interface CreateEmployeeInput {
   department?: string;
   joiningDate?: string;
 }
+
+export interface UpdateEmployeeInput {
+  name: string;
+  email: string;
+  role: "manager" | "employee";
+  employeeCode: string;
+  phone?: string;
+  jobTitle?: string;
+  department?: string;
+  joiningDate?: string;
+  status: "active" | "inactive";
+}

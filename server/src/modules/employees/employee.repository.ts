@@ -153,6 +153,7 @@ export async function updateEmployeeUser(
     email: string;
     phone?: string;
     roleId: number;
+    status: "active" | "inactive";
   }
 ) {
   const [result] = await connection.execute(
@@ -160,7 +161,7 @@ export async function updateEmployeeUser(
      SET name = ?,
          email = ?,
          phone = ?,
-         role_id = ?,
+         role_id = ?,status = ?,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = ?
        AND organization_id = ?`,
@@ -169,6 +170,7 @@ export async function updateEmployeeUser(
       data.email,
       data.phone || null,
       data.roleId,
+      data.status,
       userId,
       organizationId,
     ]
@@ -185,6 +187,7 @@ export async function updateEmployeeProfile(
     jobTitle?: string;
     department?: string;
     joiningDate?: string;
+    
   }
 ) {
   const [result] = await connection.execute(

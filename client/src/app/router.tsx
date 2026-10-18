@@ -39,10 +39,11 @@ export const router = createBrowserRouter([
       element: <DashboardPage />,
     },
     {
-      path: "/employees/new",
+      path: "/employees/create",
       element: <CreateEmployeePage />,
     },
     { path: "/employees", element: <EmployeeListPage /> },
+    
   ],
 },
 

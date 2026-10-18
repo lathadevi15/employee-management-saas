@@ -152,6 +152,7 @@ export async function updateEmployee(
     jobTitle?: string;
     department?: string;
     joiningDate?: string;
+    status: "active" | "inactive";
   }
 ) {
   const connection = await db.getConnection();
@@ -216,17 +217,18 @@ export async function updateEmployee(
     }
 
     // 5. Update both tables within the same transaction.
-    await updateEmployeeUser(
-      connection,
-      userId,
-      organizationId,
-      {
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        roleId: roles[0].id,
-      }
-    );
+   await updateEmployeeUser(
+  connection,
+  userId,
+  organizationId,
+  {
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+  roleId: roles[0].id,
+    status: input.status,
+  }
+);
 
     await updateEmployeeProfile(connection, userId, {
       employeeCode: input.employeeCode,
