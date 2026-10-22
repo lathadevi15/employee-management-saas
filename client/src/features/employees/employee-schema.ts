@@ -34,7 +34,16 @@ export const createEmployeeSchema = z.object({
 
   jobTitle: z.string().trim().optional().or(z.literal("")),
 
-  department: z.string().trim().optional().or(z.literal("")),
+departmentId: z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z.number().int().positive().optional()
+),
 
   joiningDate: z
     .string()

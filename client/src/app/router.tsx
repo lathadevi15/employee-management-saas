@@ -9,6 +9,7 @@ import RegisterPage from "../features/auth/pages/RegisterPage";
 import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import CreateEmployeePage from "../features/employees/pages/CreateEmployeePage";
+import DepartmentManagementPage from "../features/departments/DepartmentManagementPage";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
       element: <CreateEmployeePage />,
     },
     { path: "/employees", element: <EmployeeListPage /> },
+    {
+  path: "/departments",
+  element: <DepartmentManagementPage />,
+},
     
   ],
 },

@@ -1,11 +1,14 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import axios from "axios";
 import {
   createEmployee,
   type CreateEmployeeInput,
 } from "../services/employee-api";
 import { createEmployeeSchema } from "../employee-schema";
+import { getDepartments } from "@/features/departments/department-api";
+import type { Department } from "@/features/departments/department-api";
+
 
 const initialForm: CreateEmployeeInput = {
   name: "",
@@ -15,7 +18,7 @@ const initialForm: CreateEmployeeInput = {
   role: "employee",
   employeeCode: "",
   jobTitle: "",
-  department: "",
+  departmentId: "",
   joiningDate: "",
 };
 
@@ -24,9 +27,31 @@ export default function CreateEmployeePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
   const [fieldErrors, setFieldErrors] = useState<
   Record<string, string>
 >({});
+const [departments, setDepartments] = useState<Department[]>([]);
+const [departmentsLoading, setDepartmentsLoading] = useState(true);
+const [departmentsError, setDepartmentsError] = useState("");
+
+useEffect(() => {
+  async function loadDepartments() {
+    try {
+      setDepartmentsLoading(true);
+      setDepartmentsError("");
+
+      const data = await getDepartments();
+      setDepartments(data);
+    } catch {
+      setDepartmentsError("Unable to load departments. Please try again.");
+    } finally {
+      setDepartmentsLoading(false);
+    }
+  }
+
+  loadDepartments();
+}, []);
 
   function handleChange(
     event: React.ChangeEvent<
@@ -74,7 +99,7 @@ const payload: CreateEmployeeInput = {
   ...validatedData,
   phone: validatedData.phone || undefined,
   jobTitle: validatedData.jobTitle || undefined,
-  department: validatedData.department || undefined,
+  departmentId: validatedData.departmentId,
   joiningDate: validatedData.joiningDate || undefined,
 };
 
@@ -276,23 +301,49 @@ catch (err: unknown) {
 )}
           </div>
 
-          <div>
-            <label htmlFor="department" className="mb-1 block text-sm font-medium">
-              Department
-            </label>
-            <input
-              id="department"
-              name="department"
-              value={form.department}
-              onChange={handleChange}
-              className="w-full rounded-md border p-2"
-            />
-            {fieldErrors.department && (
-  <p className="mt-1 text-sm text-red-600">
-    {fieldErrors.department}
-  </p>
-)}
-          </div>
+<div>
+  <label
+    htmlFor="departmentId"
+    className="mb-1 block text-sm font-medium"
+  >
+    Department
+  </label>
+
+  <select
+    id="departmentId"
+    name="departmentId"
+    value={form.departmentId}
+    onChange={handleChange}
+    disabled={departmentsLoading || !!departmentsError}
+    className="w-full rounded-md border p-2 disabled:bg-gray-100"
+  >
+    <option value="">
+      {departmentsLoading
+        ? "Loading departments..."
+        : departmentsError
+          ? "Departments unavailable"
+          : "Select a department"}
+    </option>
+
+    {departments.map((department) => (
+      <option key={department.id} value={department.id}>
+        {department.name}
+      </option>
+    ))}
+  </select>
+
+  {departmentsError && (
+    <p role="alert" className="mt-1 text-sm text-red-600">
+      {departmentsError}
+    </p>
+  )}
+
+  {fieldErrors.departmentId && (
+    <p className="mt-1 text-sm text-red-600">
+      {fieldErrors.departmentId}
+    </p>
+  )}
+</div>
 
           <div>
             <label htmlFor="joiningDate" className="mb-1 block text-sm font-medium">

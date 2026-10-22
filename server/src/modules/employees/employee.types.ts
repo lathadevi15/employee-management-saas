@@ -18,7 +18,7 @@ export interface CreateEmployeeInput {
   role: "manager" | "employee";
   employeeCode: string;
   jobTitle?: string;
-  department?: string;
+  departmentId?: number;
   joiningDate?: string;
 }
 

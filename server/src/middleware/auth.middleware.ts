@@ -133,3 +133,55 @@ const users = rows as { status: string }[];
     });
   }
 }
+
+
+export function authorizeRoles(...allowedRoles: string[]) {
+  return async (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const [rows] = await db.execute(
+        `SELECT name
+         FROM roles
+         WHERE id = ?
+         LIMIT 1`,
+        [req.user.roleId]
+      );
+
+      const roles = rows as { name: string }[];
+
+      if (roles.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: "User role not found",
+        });
+      }
+
+      if (!allowedRoles.includes(roles[0].name)) {
+        return res.status(403).json({
+          success: false,
+          message: "You do not have permission to perform this action",
+        });
+      }
+
+      return next();
+    } catch (error) {
+      console.error("Role authorization error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to verify user permissions",
+      });
+    }
+  };
+}
+

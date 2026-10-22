@@ -14,6 +14,7 @@ import {
   updateEmployeeUser,
 updateEmployeeProfile,
 deleteEmployee as deleteEmployeeRepository,
+findDepartmentByIdInOrganization
 } from "./employee.repository.js";
 
 
@@ -77,6 +78,18 @@ export async function createEmployee(
     // 4. Hash the password before storing it.
     const passwordHash = await bcrypt.hash(input.password, 10);
 
+if (input.departmentId !== undefined) {
+  const departmentExists = await findDepartmentByIdInOrganization(
+    connection,
+    organizationId,
+    input.departmentId
+  );
+
+  if (!departmentExists) {
+    throw new Error("DEPARTMENT_NOT_FOUND");
+  }
+}
+
     // 5. Create the user's login and identity record.
     const userId = await createUser(
       connection,
@@ -94,7 +107,7 @@ export async function createEmployee(
       userId,
       input.employeeCode,
       input.jobTitle,
-      input.department,
+      input.departmentId,
       input.joiningDate
     );
 
@@ -112,7 +125,8 @@ export async function createEmployee(
       status: "active",
       employeeCode: input.employeeCode,
       jobTitle: input.jobTitle ?? null,
-      department: input.department ?? null,
+      departmentId: input.departmentId ?? null,
+department: null,
       joiningDate: input.joiningDate ?? null,
     };
   } catch (error) {
@@ -150,7 +164,7 @@ export async function updateEmployee(
     role: "manager" | "employee";
     employeeCode: string;
     jobTitle?: string;
-    department?: string;
+    departmentId?: number;
     joiningDate?: string;
     status: "active" | "inactive";
   }
@@ -216,6 +230,20 @@ export async function updateEmployee(
       throw new Error("EMPLOYEE_CODE_EXISTS");
     }
 
+
+if (input.departmentId !== undefined) {
+  const departmentExists = await findDepartmentByIdInOrganization(
+    connection,
+    organizationId,
+    input.departmentId
+  );
+
+  if (!departmentExists) {
+    throw new Error("DEPARTMENT_NOT_FOUND");
+  }
+}
+
+
     // 5. Update both tables within the same transaction.
    await updateEmployeeUser(
   connection,
@@ -233,7 +261,7 @@ export async function updateEmployee(
     await updateEmployeeProfile(connection, userId, {
       employeeCode: input.employeeCode,
       jobTitle: input.jobTitle,
-      department: input.department,
+      departmentId: input.departmentId,
       joiningDate: input.joiningDate,
     });
 
@@ -247,7 +275,8 @@ export async function updateEmployee(
       role: input.role,
       employeeCode: input.employeeCode,
       jobTitle: input.jobTitle || null,
-      department: input.department || null,
+      departmentId: input.departmentId ?? null,
+department: null,
       joiningDate: input.joiningDate || null,
     };
   } catch (error) {

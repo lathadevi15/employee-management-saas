@@ -19,12 +19,13 @@ interface ExistingUserRow extends RowDataPacket {
 }
 
 
+
 export async function createEmployeeProfile(
   connection: PoolConnection,
   userId: number,
   employeeCode: string,
   jobTitle: string | undefined,
-  department: string | undefined,
+  departmentId: number | undefined,
   joiningDate: string | undefined
 ): Promise<number> {
   const [result] = await connection.execute<ResultSetHeader>(
@@ -33,7 +34,7 @@ export async function createEmployeeProfile(
         user_id,
         employee_code,
         job_title,
-        department,
+        department_id,
         joining_date
       )
       VALUES (?, ?, ?, ?, ?)
@@ -42,14 +43,13 @@ export async function createEmployeeProfile(
       userId,
       employeeCode,
       jobTitle ?? null,
-      department ?? null,
+      departmentId ?? null,
       joiningDate ?? null,
     ]
   );
 
   return result.insertId;
 }
-
 
 
 
@@ -114,6 +114,7 @@ export async function findEmployeeCodeInOrganization(
 }
 
 
+
 export async function findEmployeesByOrganization(
   connection: PoolConnection,
   organizationId: number
@@ -128,13 +129,17 @@ export async function findEmployeesByOrganization(
        r.name AS role,
        ep.employee_code AS employeeCode,
        ep.job_title AS jobTitle,
-       ep.department,
+       ep.department_id AS departmentId,
+       d.name AS department,
        ep.joining_date AS joiningDate
      FROM users u
      INNER JOIN employee_profiles ep
        ON ep.user_id = u.id
      INNER JOIN roles r
        ON r.id = u.role_id
+     LEFT JOIN departments d
+       ON d.id = ep.department_id
+      AND d.organization_id = u.organization_id
      WHERE u.organization_id = ?
      ORDER BY u.created_at DESC`,
     [organizationId]
@@ -179,29 +184,29 @@ export async function updateEmployeeUser(
   return result;
 }
 
+
 export async function updateEmployeeProfile(
   connection: PoolConnection,
   userId: number,
   data: {
     employeeCode: string;
     jobTitle?: string;
-    department?: string;
+    departmentId?: number;
     joiningDate?: string;
-    
   }
 ) {
   const [result] = await connection.execute(
     `UPDATE employee_profiles
      SET employee_code = ?,
          job_title = ?,
-         department = ?,
+         department_id = ?,
          joining_date = ?,
          updated_at = CURRENT_TIMESTAMP
      WHERE user_id = ?`,
     [
       data.employeeCode,
       data.jobTitle || null,
-      data.department || null,
+      data.departmentId ?? null,
       data.joiningDate || null,
       userId,
     ]
@@ -209,6 +214,7 @@ export async function updateEmployeeProfile(
 
   return result;
 }
+
 
 
 export async function deleteEmployee(
@@ -226,3 +232,20 @@ export async function deleteEmployee(
   return result;
 }
 
+
+export async function findDepartmentByIdInOrganization(
+  connection: PoolConnection,
+  organizationId: number,
+  departmentId: number
+): Promise<boolean> {
+  const [rows] = await connection.execute<RowDataPacket[]>(
+    `SELECT id
+     FROM departments
+     WHERE id = ?
+       AND organization_id = ?
+     LIMIT 1`,
+    [departmentId, organizationId]
+  );
+
+  return rows.length > 0;
+}

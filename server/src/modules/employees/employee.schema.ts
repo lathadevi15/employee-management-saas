@@ -1,6 +1,15 @@
 
 import { z } from "zod";
+const optionalDepartmentId = z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
 
+    return value;
+  },
+  z.coerce.number().int().positive().optional()
+);
 export const createEmployeeSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters"),
 
@@ -19,7 +28,7 @@ export const createEmployeeSchema = z.object({
 
   jobTitle: z.string().trim().optional(),
 
-  department: z.string().trim().optional(),
+departmentId: optionalDepartmentId,
 
   joiningDate: z
     .string()
@@ -43,7 +52,7 @@ export const updateEmployeeSchema = z.object({
     .trim()
     .min(1, "Employee code is required"),
   jobTitle: z.string().trim().optional().or(z.literal("")),
-  department: z.string().trim().optional().or(z.literal("")),
+ departmentId: optionalDepartmentId,
   joiningDate: z
     .string()
     .optional()
