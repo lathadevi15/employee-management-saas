@@ -1,10 +1,14 @@
 
-import { findDepartmentsByOrganization } from "./department.repository.js";
-import { createDepartmentSchema } from "./department.schema.js";
+
 import {
+  findDepartmentsByOrganization,
   createDepartment,
   findDepartmentByName,
+  updateDepartment,
 } from "./department.repository.js";
+
+import { createDepartmentSchema } from "./department.schema.js";
+
 
 export async function getDepartments(organizationId: number) {
   const departments = await findDepartmentsByOrganization(
@@ -17,6 +21,7 @@ export async function getDepartments(organizationId: number) {
   }));
 }
 
+
 export async function createDepartmentService(
   organizationId: number,
   input: unknown
@@ -24,8 +29,7 @@ export async function createDepartmentService(
   const validationResult = createDepartmentSchema.safeParse(input);
 
   if (!validationResult.success) {
-    const error = new Error("VALIDATION_ERROR");
-    throw error;
+    throw new Error("VALIDATION_ERROR");
   }
 
   const { name } = validationResult.data;
@@ -39,10 +43,80 @@ export async function createDepartmentService(
     throw new Error("DEPARTMENT_ALREADY_EXISTS");
   }
 
-  const department = await createDepartment(organizationId, name);
+  try {
+    const department = await createDepartment(organizationId, name);
 
-  return {
-    id: department.id,
-    name: department.name,
-  };
+    return {
+      id: department.id,
+      name: department.name,
+    };
+  } catch (error: unknown) {
+    // MySQL duplicate-key error.
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    ) {
+      throw new Error("DEPARTMENT_ALREADY_EXISTS");
+    }
+
+    throw error;
+  }
+}
+
+
+
+export async function updateDepartmentService(
+  organizationId: number,
+  departmentId: number,
+  input: unknown
+) {
+  const validationResult = createDepartmentSchema.safeParse(input);
+
+  if (!validationResult.success) {
+    throw new Error("VALIDATION_ERROR");
+  }
+
+  const { name } = validationResult.data;
+
+  const existingDepartment = await findDepartmentByName(
+    organizationId,
+    name
+  );
+
+  if (
+    existingDepartment &&
+    existingDepartment.id !== departmentId
+  ) {
+    throw new Error("DEPARTMENT_ALREADY_EXISTS");
+  }
+
+  try {
+    const department = await updateDepartment(
+      organizationId,
+      departmentId,
+      name
+    );
+
+    if (!department) {
+      throw new Error("DEPARTMENT_NOT_FOUND");
+    }
+
+    return {
+      id: department.id,
+      name: department.name,
+    };
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    ) {
+      throw new Error("DEPARTMENT_ALREADY_EXISTS");
+    }
+
+    throw error;
+  }
 }

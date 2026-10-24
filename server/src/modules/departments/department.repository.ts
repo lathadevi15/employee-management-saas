@@ -63,3 +63,27 @@ export async function createDepartment(
 
   return rows[0];
 }
+
+
+export async function updateDepartment(
+  organizationId: number,
+  departmentId: number,
+  name: string
+): Promise<DepartmentRow | null> {
+  await db.execute(
+    `UPDATE departments
+     SET name = ?
+     WHERE id = ? AND organization_id = ?`,
+    [name, departmentId, organizationId]
+  );
+
+  const [rows] = await db.execute<DepartmentRow[]>(
+    `SELECT id, organization_id, name
+     FROM departments
+     WHERE id = ? AND organization_id = ?
+     LIMIT 1`,
+    [departmentId, organizationId]
+  );
+
+  return rows[0] ?? null;
+}

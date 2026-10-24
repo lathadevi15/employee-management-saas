@@ -7,11 +7,12 @@ import {
 import {
   createDepartmentController,
   getDepartmentsController,
+  updateDepartmentController,
 } from "./department.controller.js";
 
 const router = Router();
 
-// Any authenticated user in the organization can view departments.
+// Any authenticated user can view departments.
 router.get("/", authenticate, getDepartmentsController);
 
 // Only organization admins can create departments.
@@ -20,6 +21,14 @@ router.post(
   authenticate,
   authorizeRoles("organization_admin"),
   createDepartmentController
+);
+
+// Only organization admins can update departments.
+router.put(
+  "/:id",
+  authenticate,
+  authorizeRoles("organization_admin"),
+  updateDepartmentController
 );
 
 export default router;

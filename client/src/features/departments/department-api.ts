@@ -29,3 +29,22 @@ export async function createDepartment(
 
   return response.data.data;
 }
+
+
+interface UpdateDepartmentResponse {
+  success: boolean;
+  message: string;
+  data: Department;
+}
+
+export async function updateDepartment(
+  id: number,
+  name: string
+): Promise<Department> {
+  const response = await apiClient.put<UpdateDepartmentResponse>(
+    `/departments/${id}`,
+    { name }
+  );
+
+  return response.data.data;
+}
