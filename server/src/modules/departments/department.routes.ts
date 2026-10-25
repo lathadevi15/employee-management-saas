@@ -8,6 +8,7 @@ import {
   createDepartmentController,
   getDepartmentsController,
   updateDepartmentController,
+  deleteDepartmentController,
 } from "./department.controller.js";
 
 const router = Router();
@@ -29,6 +30,12 @@ router.put(
   authenticate,
   authorizeRoles("organization_admin"),
   updateDepartmentController
+);
+router.delete(
+  "/:id",
+  authenticate,
+  authorizeRoles("organization_admin"),
+  deleteDepartmentController
 );
 
 export default router;

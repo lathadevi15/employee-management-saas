@@ -48,3 +48,11 @@ export async function updateDepartment(
 
   return response.data.data;
 }
+
+
+export async function deleteDepartment(
+  id: number
+): Promise<void> {
+  await apiClient.delete(`/departments/${id}`);
+}
+
