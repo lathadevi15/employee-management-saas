@@ -1,10 +1,11 @@
 
-
 import {
   findDepartmentsByOrganization,
   createDepartment,
   findDepartmentByName,
   updateDepartment,
+  countEmployeesByDepartment,
+  deleteDepartment,
 } from "./department.repository.js";
 
 import { createDepartmentSchema } from "./department.schema.js";
@@ -119,4 +120,28 @@ export async function updateDepartmentService(
 
     throw error;
   }
+}
+
+
+
+export async function deleteDepartmentService(
+  organizationId: number,
+  departmentId: number
+) {
+  const assignedEmployees = await countEmployeesByDepartment(
+    organizationId,
+    departmentId
+  );
+
+  if (assignedEmployees > 0) {
+    throw new Error("DEPARTMENT_HAS_EMPLOYEES");
+  }
+
+  const deleted = await deleteDepartment(organizationId, departmentId);
+
+  if (!deleted) {
+    throw new Error("DEPARTMENT_NOT_FOUND");
+  }
+
+  return { id: departmentId };
 }

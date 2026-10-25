@@ -5,6 +5,7 @@ import {
   createDepartment,
   getDepartments,
   updateDepartment,
+  deleteDepartment,
   type Department,
 } from "./department-api";
 
@@ -143,6 +144,49 @@ async function handleUpdateDepartment(id: number) {
 }
 
 
+async function handleDeleteDepartment(
+  id: number,
+  departmentName: string
+) {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${departmentName}"?`
+  );
+
+  if (!confirmed) return;
+
+  setError("");
+  setSuccess("");
+
+  try {
+    await deleteDepartment(id);
+
+    setDepartments((currentDepartments) =>
+      currentDepartments.filter(
+        (department) => department.id !== id
+      )
+    );
+
+    setSuccess(
+      `Department "${departmentName}" deleted successfully.`
+    );
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      setError("Your session has expired. Please log in again.");
+    } else if (error.response?.status === 403) {
+      setError("You do not have permission to delete departments.");
+    } else if (error.response?.status === 404) {
+      setError("Department not found. Please refresh the list.");
+    } else if (error.response?.status === 409) {
+      setError(
+        "This department has assigned employees. Reassign them before deleting it."
+      );
+    } else {
+      setError("Failed to delete department. Please try again.");
+    }
+  }
+}
+
+
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="mb-2 text-2xl font-semibold">
@@ -266,6 +310,18 @@ async function handleUpdateDepartment(id: number) {
           >
             Edit
           </button>
+          
+<button
+  type="button"
+  onClick={() =>
+    handleDeleteDepartment(department.id, department.name)
+  }
+  disabled={savingEdit}
+  className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+>
+  Delete
+</button>
+
         </>
       )}
     </li>

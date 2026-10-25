@@ -87,3 +87,35 @@ export async function updateDepartment(
 
   return rows[0] ?? null;
 }
+
+
+export async function countEmployeesByDepartment(
+  organizationId: number,
+  departmentId: number
+): Promise<number> {
+  const [rows] = await db.execute<
+    (RowDataPacket & { total: number })[]
+  >(
+    `SELECT COUNT(*) AS total
+     FROM employee_profiles ep
+     INNER JOIN users u ON u.id = ep.user_id
+     WHERE u.organization_id = ?
+       AND ep.department_id = ?`,
+    [organizationId, departmentId]
+  );
+
+  return Number(rows[0]?.total ?? 0);
+}
+
+export async function deleteDepartment(
+  organizationId: number,
+  departmentId: number
+): Promise<boolean> {
+  const [result] = await db.execute(
+    `DELETE FROM departments
+     WHERE id = ? AND organization_id = ?`,
+    [departmentId, organizationId]
+  );
+
+  return (result as { affectedRows: number }).affectedRows > 0;
+}

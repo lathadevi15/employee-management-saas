@@ -5,6 +5,7 @@ import {
   getDepartments,
   createDepartmentService,
   updateDepartmentService,
+  deleteDepartmentService,
 } from "./department.service.js";
 
 export async function getDepartmentsController(
@@ -152,6 +153,77 @@ export async function updateDepartmentController(
     return res.status(500).json({
       success: false,
       message: "Unable to update department",
+    });
+  }
+}
+
+
+
+export async function deleteDepartmentController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
+  const departmentId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(departmentId) || departmentId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid department ID",
+    });
+  }
+
+  try {
+    await deleteDepartmentService(
+      req.user.organizationId,
+      departmentId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Department deleted successfully",
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.message === "DEPARTMENT_NOT_FOUND") {
+        return res.status(404).json({
+          success: false,
+          message: "Department not found",
+        });
+      }
+
+      if (error.message === "DEPARTMENT_HAS_EMPLOYEES") {
+        return res.status(409).json({
+          success: false,
+          message:
+            "Cannot delete this department because employees are assigned to it. Reassign them first.",
+        });
+      }
+
+      if (
+        "code" in error &&
+        (error as Error & { code?: string }).code ===
+          "ER_ROW_IS_REFERENCED_2"
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "Cannot delete this department because employees are assigned to it. Reassign them first.",
+        });
+      }
+    }
+
+    console.error("Delete department error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete department",
     });
   }
 }
