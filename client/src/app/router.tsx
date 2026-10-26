@@ -10,6 +10,7 @@ import ProtectedRoute from "../features/auth/components/ProtectedRoute";
 import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import CreateEmployeePage from "../features/employees/pages/CreateEmployeePage";
 import DepartmentManagementPage from "../features/departments/DepartmentManagementPage";
+import DepartmentEmployeesPage from "../features/departments/DepartmentEmployeesPage";
 
 export const router = createBrowserRouter([
   {
@@ -47,6 +48,11 @@ export const router = createBrowserRouter([
     {
   path: "/departments",
   element: <DepartmentManagementPage />,
+},
+
+{
+  path: "/departments/:id/employees",
+  element: <DepartmentEmployeesPage />,
 },
     
   ],

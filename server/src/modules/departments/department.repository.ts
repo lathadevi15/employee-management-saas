@@ -119,3 +119,62 @@ export async function deleteDepartment(
 
   return (result as { affectedRows: number }).affectedRows > 0;
 }
+
+
+
+export async function findEmployeesByDepartment(
+  organizationId: number,
+  departmentId: number
+) {
+  const [rows] = await db.execute<
+    (RowDataPacket & {
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+      employeeCode: string;
+      jobTitle: string | null;
+      status: string;
+    })[]
+  >(
+    `SELECT
+       u.id,
+       u.name,
+       u.email,
+       r.name AS role,
+       ep.employee_code AS employeeCode,
+       ep.job_title AS jobTitle,
+       u.status
+     FROM employee_profiles ep
+     INNER JOIN users u
+       ON u.id = ep.user_id
+     INNER JOIN roles r
+       ON r.id = u.role_id
+     INNER JOIN departments d
+       ON d.id = ep.department_id
+      AND d.organization_id = u.organization_id
+     WHERE u.organization_id = ?
+       AND ep.department_id = ?
+     ORDER BY u.name ASC`,
+    [organizationId, departmentId]
+  );
+
+  return rows;
+}
+
+
+export async function findDepartmentByIdInOrganization(
+  organizationId: number,
+  departmentId: number
+): Promise<DepartmentRow | null> {
+  const [rows] = await db.execute<DepartmentRow[]>(
+    `SELECT id, organization_id, name
+     FROM departments
+     WHERE id = ? AND organization_id = ?
+     LIMIT 1`,
+    [departmentId, organizationId]
+  );
+
+  return rows[0] ?? null;
+}
+

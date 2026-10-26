@@ -6,6 +6,7 @@ import {
   createDepartmentService,
   updateDepartmentService,
   deleteDepartmentService,
+  getDepartmentEmployeesService,
 } from "./department.service.js";
 
 export async function getDepartmentsController(
@@ -224,6 +225,58 @@ export async function deleteDepartmentController(
     return res.status(500).json({
       success: false,
       message: "Failed to delete department",
+    });
+  }
+}
+
+
+
+export async function getDepartmentEmployeesController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
+  const departmentId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(departmentId) || departmentId <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid department ID",
+    });
+  }
+
+  try {
+    const data = await getDepartmentEmployeesService(
+      req.user.organizationId,
+      departmentId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === "DEPARTMENT_NOT_FOUND"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found",
+      });
+    }
+
+    console.error("Get department employees error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve department employees",
     });
   }
 }

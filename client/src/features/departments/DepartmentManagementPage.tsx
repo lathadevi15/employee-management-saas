@@ -8,6 +8,7 @@ import {
   deleteDepartment,
   type Department,
 } from "./department-api";
+import { Link } from "react-router-dom";
 
 export default function DepartmentManagementPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -297,7 +298,12 @@ async function handleDeleteDepartment(
               ID: {department.id}
             </p>
           </div>
-
+<Link
+  to={`/departments/${department.id}/employees`}
+  className="text-blue-600 hover:underline"
+>
+  View Employees
+</Link>
           <button
             type="button"
             onClick={() => {

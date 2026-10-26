@@ -16,6 +16,7 @@ apiClient.interceptors.request.use((config) => {
 });
 
 
+
 export interface UpdateEmployeeInput {
   name: string;
   email: string;
@@ -23,9 +24,11 @@ export interface UpdateEmployeeInput {
   role: "manager" | "employee";
   employeeCode: string;
   jobTitle?: string;
-  department?: string;
+  departmentId?: number | "";
   joiningDate?: string;
+  status: "active" | "inactive";
 }
+
 
 export async function updateEmployee(
   userId: number,

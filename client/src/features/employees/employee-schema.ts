@@ -70,7 +70,16 @@ export const updateEmployeeSchema = z.object({
   role: z.enum(["manager", "employee"]),
   employeeCode: z.string().trim().min(1, "Employee code is required"),
   jobTitle: z.string().trim().optional().or(z.literal("")),
-  department: z.string().trim().optional().or(z.literal("")),
+  departmentId: z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
+
+    return Number(value);
+  },
+  z.number().int().positive().optional()
+),
   joiningDate: z
     .string()
     .optional()

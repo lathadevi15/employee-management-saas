@@ -7,19 +7,25 @@ import {
   type UpdateEmployeeInput,
 } from "../services/employee-api";
 import { updateEmployeeSchema } from "../employee-schema";
+import { getDepartments } from "@/features/departments/department-api";
+import type { Department } from "@/features/departments/department-api";
+
+type EditEmployeeForm = Omit<UpdateEmployeeInput, "departmentId"> & {
+  departmentId: string;
+};
 
 export default function EditEmployeePage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<UpdateEmployeeInput>({
+  const [form, setForm] = useState<EditEmployeeForm>({
     name: "",
     email: "",
     phone: "",
     role: "employee",
     employeeCode: "",
     jobTitle: "",
-    department: "",
+    departmentId: "",
     joiningDate: "",
     status: "active",
   });
@@ -30,6 +36,9 @@ export default function EditEmployeePage() {
   const [fieldErrors, setFieldErrors] = useState<
     Record<string, string>
   >({});
+  const [departments, setDepartments] = useState<Department[]>([]);
+const [departmentsLoading, setDepartmentsLoading] = useState(true);
+const [departmentsError, setDepartmentsError] = useState("");
 
   useEffect(() => {
     async function loadEmployee() {
@@ -51,7 +60,7 @@ export default function EditEmployeePage() {
           role: employee.role as "manager" | "employee",
           employeeCode: employee.employeeCode,
           jobTitle: employee.jobTitle ?? "",
-          department: employee.department ?? "",
+          departmentId: employee.departmentId?.toString() ?? "",
           joiningDate: employee.joiningDate
             ? employee.joiningDate.slice(0, 10)
             : "",
@@ -69,6 +78,26 @@ export default function EditEmployeePage() {
 
     void loadEmployee();
   }, [id]);
+
+  useEffect(() => {
+  async function loadDepartments() {
+    try {
+      setDepartmentsLoading(true);
+      setDepartmentsError("");
+
+      const data = await getDepartments();
+      setDepartments(data);
+    } catch {
+      setDepartmentsError(
+        "Unable to load departments. Please try again."
+      );
+    } finally {
+      setDepartmentsLoading(false);
+    }
+  }
+
+  void loadDepartments();
+}, []);
 
   function handleChange(
     event: React.ChangeEvent<
@@ -126,15 +155,14 @@ export default function EditEmployeePage() {
     try {
       const data = validation.data;
 
-      const payload: UpdateEmployeeInput = {
-        ...data,
-        phone: data.phone || undefined,
-        jobTitle: data.jobTitle || undefined,
-        department: data.department || undefined,
-        joiningDate: data.joiningDate || undefined,
-        status: data.status,
-      };
-
+    const payload: UpdateEmployeeInput = {
+  ...data,
+  phone: data.phone || undefined,
+  jobTitle: data.jobTitle || undefined,
+  departmentId: data.departmentId,
+  joiningDate: data.joiningDate || undefined,
+  status: data.status,
+};
       await updateEmployee(Number(id), payload);
       navigate("/employees");
     } catch {
@@ -173,7 +201,6 @@ export default function EditEmployeePage() {
       required: true,
     },
     { name: "jobTitle", label: "Job title", required: false },
-    { name: "department", label: "Department", required: false },
     {
       name: "joiningDate",
       label: "Joining date",
@@ -230,6 +257,51 @@ export default function EditEmployeePage() {
               )}
             </div>
           ))}
+          
+<div>
+  <label
+    htmlFor="departmentId"
+    className="mb-1 block text-sm font-medium"
+  >
+    Department
+  </label>
+
+  <select
+    id="departmentId"
+    name="departmentId"
+    value={form.departmentId ?? ""}
+    onChange={handleChange}
+    disabled={departmentsLoading || !!departmentsError}
+    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-purple-500 focus:outline-none disabled:bg-gray-100"
+  >
+    <option value="">
+      {departmentsLoading
+        ? "Loading departments..."
+        : departmentsError
+          ? "Departments unavailable"
+          : "No department"}
+    </option>
+
+    {departments.map((department) => (
+      <option key={department.id} value={department.id}>
+        {department.name}
+      </option>
+    ))}
+  </select>
+
+  {departmentsError && (
+    <p role="alert" className="mt-1 text-sm text-red-600">
+      {departmentsError}
+    </p>
+  )}
+
+  {fieldErrors.departmentId && (
+    <p className="mt-1 text-sm text-red-600">
+      {fieldErrors.departmentId}
+    </p>
+  )}
+</div>
+
 
           <div>
             <label

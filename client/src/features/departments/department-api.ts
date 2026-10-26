@@ -56,3 +56,25 @@ export async function deleteDepartment(
   await apiClient.delete(`/departments/${id}`);
 }
 
+export interface DepartmentEmployee {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  employeeCode: string;
+  jobTitle: string | null;
+  status: string;
+}
+
+export async function getDepartmentEmployees(
+  departmentId: number
+): Promise<{
+  department: Department;
+  employees: DepartmentEmployee[];
+}> {
+  const response = await apiClient.get(
+    `/departments/${departmentId}/employees`
+  );
+
+  return response.data.data;
+}

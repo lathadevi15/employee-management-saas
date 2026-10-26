@@ -1,4 +1,3 @@
-
 import {
   findDepartmentsByOrganization,
   createDepartment,
@@ -6,8 +5,9 @@ import {
   updateDepartment,
   countEmployeesByDepartment,
   deleteDepartment,
+  findEmployeesByDepartment,
+  findDepartmentByIdInOrganization,
 } from "./department.repository.js";
-
 import { createDepartmentSchema } from "./department.schema.js";
 
 
@@ -144,4 +144,32 @@ export async function deleteDepartmentService(
   }
 
   return { id: departmentId };
+}
+
+
+export async function getDepartmentEmployeesService(
+  organizationId: number,
+  departmentId: number
+) {
+  const department = await findDepartmentByIdInOrganization(
+    organizationId,
+    departmentId
+  );
+
+  if (!department) {
+    throw new Error("DEPARTMENT_NOT_FOUND");
+  }
+
+  const employees = await findEmployeesByDepartment(
+    organizationId,
+    departmentId
+  );
+
+  return {
+    department: {
+      id: department.id,
+      name: department.name,
+    },
+    employees,
+  };
 }

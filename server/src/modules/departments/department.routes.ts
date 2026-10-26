@@ -9,6 +9,7 @@ import {
   getDepartmentsController,
   updateDepartmentController,
   deleteDepartmentController,
+  getDepartmentEmployeesController,
 } from "./department.controller.js";
 
 const router = Router();
@@ -38,4 +39,9 @@ router.delete(
   deleteDepartmentController
 );
 
+router.get(
+  "/:id/employees",
+  authenticate,
+  getDepartmentEmployeesController
+);
 export default router;

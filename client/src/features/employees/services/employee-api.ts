@@ -56,6 +56,7 @@ export interface Employee {
   employeeCode: string;
   jobTitle: string | null;
   department: string | null;
+  departmentId: number | null;
   joiningDate: string | null;
 }
 
@@ -79,7 +80,7 @@ export interface UpdateEmployeeInput {
   role: "manager" | "employee";
   employeeCode: string;
   jobTitle?: string;
-  department?: string;
+  departmentId?: number;
   joiningDate?: string;
   status: "active" | "inactive";
 }
