@@ -8,7 +8,9 @@ import {
   getEmployees,
   updateEmployee,
   removeEmployee,
+  getActiveManagers
 } from "./employee.service.js";
+
 
 
 export async function createEmployeeController(
@@ -269,6 +271,37 @@ export async function deleteEmployeeController(
     return res.status(500).json({
       success: false,
       message: "Unable to delete employee",
+    });
+  }
+}
+
+
+export async function getActiveManagersController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+
+  try {
+    const managers = await getActiveManagers(
+      req.user.organizationId
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: managers,
+    });
+  } catch (error) {
+    console.error("Get active managers error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch active managers",
     });
   }
 }

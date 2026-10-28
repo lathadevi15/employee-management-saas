@@ -11,6 +11,8 @@ import DashboardPage from "../features/dashboard/pages/DashboardPage";
 import CreateEmployeePage from "../features/employees/pages/CreateEmployeePage";
 import DepartmentManagementPage from "../features/departments/DepartmentManagementPage";
 import DepartmentEmployeesPage from "../features/departments/DepartmentEmployeesPage";
+import ProjectListPage from "../features/projects/pages/ProjectListPage";
+import CreateProjectPage from "../features/projects/pages/CreateProjectPage";
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +55,17 @@ export const router = createBrowserRouter([
 {
   path: "/departments/:id/employees",
   element: <DepartmentEmployeesPage />,
+},
+
+{
+  path: "/projects",
+  element: <ProjectListPage  />,
+},
+
+
+{
+  path: "/projects/create",
+  element: <CreateProjectPage   />,
 },
     
   ],

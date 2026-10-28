@@ -14,11 +14,16 @@ import {
   updateEmployeeUser,
 updateEmployeeProfile,
 deleteEmployee as deleteEmployeeRepository,
-findDepartmentByIdInOrganization
+findDepartmentByIdInOrganization,
+ findActiveManagersByOrganization,
 } from "./employee.repository.js";
 
 
-
+export async function getActiveManagers(
+  organizationId: number
+) {
+  return findActiveManagersByOrganization(organizationId);
+}
 export async function authorizeEmployeeCreation(
   roleId: number
 ): Promise<void> {

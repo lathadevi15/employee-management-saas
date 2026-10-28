@@ -5,7 +5,7 @@ import {
   RowDataPacket,
 } from "mysql2/promise";
 
-
+import { db } from "../../config/database.js";
 
 
 interface RoleRow extends RowDataPacket {
@@ -248,4 +248,32 @@ export async function findDepartmentByIdInOrganization(
   );
 
   return rows.length > 0;
+}
+
+
+
+export async function findActiveManagersByOrganization(
+  organizationId: number
+) {
+  const [rows] = await db.execute<
+    (RowDataPacket & {
+      id: number;
+      name: string;
+      email: string;
+    })[]
+  >(
+    `SELECT
+       u.id,
+       u.name,
+       u.email
+     FROM users u
+     INNER JOIN roles r ON r.id = u.role_id
+     WHERE u.organization_id = ?
+       AND r.name = 'manager'
+       AND u.status = 'active'
+     ORDER BY u.name ASC`,
+    [organizationId]
+  );
+
+  return rows;
 }
