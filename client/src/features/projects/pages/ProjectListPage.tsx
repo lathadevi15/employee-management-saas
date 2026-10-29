@@ -198,7 +198,12 @@ export default function ProjectListPage() {
               {filteredProjects.map((project) => (
                 <tr key={project.id}>
                   <td className="p-3">
-                    <p className="font-medium">{project.name}</p>
+                    <p className="font-medium"><Link
+  to={`/projects/${project.id}`}
+  className="font-medium text-blue-600 hover:underline"
+>
+  {project.name}
+</Link></p>
                     <p className="text-gray-500">
                       {project.client_name || "No client specified"}
                     </p>

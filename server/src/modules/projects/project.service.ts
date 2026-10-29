@@ -1,12 +1,14 @@
 
 import { db } from "../../config/database.js";
-import { createProjectSchema } from "./project.schema.js";
+import { createProjectSchema, addProjectMembersSchema } from "./project.schema.js";
 import {
   addProjectMember,
   createProject,
   findProjectById,
-  findProjectsByOrganization ,
+  findProjectsByOrganization ,findProjectMembers,
+  findAvailableProjectMembers, addProjectMembers, removeProjectMember
 } from "./project.repository.js";
+import { RowDataPacket } from "mysql2/promise";
 
 interface ProjectActor {
   userId: number;
@@ -137,3 +139,304 @@ export async function getProjectsService(
 
   return projects;
 }
+
+export async function getProjectByIdService(
+  actor: ProjectActor,
+  projectId: number
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Managers can access only projects assigned to them.
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    return project;
+  } finally {
+    connection.release();
+  }
+}
+
+
+
+export async function getProjectMembersService(
+  actor: ProjectActor,
+  projectId: number
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Managers can view team members only for their own projects.
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    return await findProjectMembers(
+      actor.organizationId,
+      projectId
+    );
+  } finally {
+    connection.release();
+  }
+}
+
+
+
+export async function getAvailableProjectMembersService(
+  actor: ProjectActor,
+  projectId: number
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Managers can manage members only on their own projects.
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    return await findAvailableProjectMembers(
+      actor.organizationId,
+      projectId
+    );
+  } finally {
+    connection.release();
+  }
+}
+
+
+export async function addProjectMembersService(
+  actor: ProjectActor,
+  projectId: number,
+  input: unknown
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const parsed = addProjectMembersSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new Error("VALIDATION_ERROR");
+  }
+
+  const userIds = [...new Set(parsed.data.userIds)];
+
+  if (userIds.length !== parsed.data.userIds.length) {
+    throw new Error("DUPLICATE_USER_IDS");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    const placeholders = userIds.map(() => "?").join(", ");
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      `SELECT u.id
+       FROM users u
+       INNER JOIN roles r ON r.id = u.role_id
+       WHERE u.organization_id = ?
+         AND u.status = 'active'
+         AND r.name = 'employee'
+         AND u.id IN (${placeholders})
+       FOR UPDATE`,
+      [actor.organizationId, ...userIds]
+    );
+
+    if (rows.length !== userIds.length) {
+      throw new Error("INVALID_PROJECT_MEMBERS");
+    }
+
+    const [existingRows] = await connection.execute<RowDataPacket[]>(
+      `SELECT user_id
+       FROM project_members
+       WHERE project_id = ?
+         AND user_id IN (${placeholders})`,
+      [projectId, ...userIds]
+    );
+
+    if (existingRows.length > 0) {
+      throw new Error("MEMBERS_ALREADY_ASSIGNED");
+    }
+
+    await addProjectMembers(connection, projectId, userIds);
+
+    await connection.commit();
+
+    return { addedCount: userIds.length };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+
+export async function removeProjectMemberService(
+  actor: ProjectActor,
+  projectId: number,
+  userId: number
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (
+    !Number.isSafeInteger(projectId) ||
+    projectId <= 0 ||
+    !Number.isSafeInteger(userId) ||
+    userId <= 0
+  ) {
+    throw new Error("INVALID_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    if (project.manager_id === userId) {
+      throw new Error("CANNOT_REMOVE_PROJECT_MANAGER");
+    }
+
+    const result = await removeProjectMember(
+      connection,
+      projectId,
+      userId
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("PROJECT_MEMBER_NOT_FOUND");
+    }
+
+    await connection.commit();
+
+    return { removedUserId: userId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+

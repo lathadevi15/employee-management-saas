@@ -13,6 +13,7 @@ import DepartmentManagementPage from "../features/departments/DepartmentManageme
 import DepartmentEmployeesPage from "../features/departments/DepartmentEmployeesPage";
 import ProjectListPage from "../features/projects/pages/ProjectListPage";
 import CreateProjectPage from "../features/projects/pages/CreateProjectPage";
+import ProjectDetailsPage from "../features/projects/pages/ProjectDetailsPage";
 
 export const router = createBrowserRouter([
   {
@@ -66,6 +67,10 @@ export const router = createBrowserRouter([
 {
   path: "/projects/create",
   element: <CreateProjectPage   />,
+},
+{
+  path: "/projects/:id",
+  element: <ProjectDetailsPage />,
 },
     
   ],

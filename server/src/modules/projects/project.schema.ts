@@ -66,5 +66,17 @@ export const createProjectSchema = z
       });
     }
   });
+  
+export const addProjectMembersSchema = z
+  .object({
+    userIds: z
+      .array(z.number().int().positive())
+      .min(1, "Select at least one employee")
+      .max(100, "You can add at most 100 employees at a time"),
+  })
+  .strict();
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+
+
