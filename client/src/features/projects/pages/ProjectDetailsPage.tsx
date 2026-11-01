@@ -10,6 +10,7 @@ import {
   type Project,
   type ProjectMember,
 } from "../services/project-api";
+import { useAuth } from "../../auth/AuthContext";
 
 export default function ProjectDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -192,6 +193,10 @@ async function handleRemoveMember(userId: number, memberName: string) {
     setRemovingUserId(null);
   }
 }
+const { user } = useAuth();
+
+const canManageTeam =
+  user?.roleId === 2 || user?.roleId === 3;
   return (
     <div className="space-y-6 p-6">
       <Link
@@ -289,13 +294,15 @@ async function handleRemoveMember(userId: number, memberName: string) {
     <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium">
       {members.length} {members.length === 1 ? "member" : "members"}
     </span>
-    <button
-  type="button"
-  onClick={openAddMembersDialog}
-  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
->
-  + Add Members
-</button>
+   {canManageTeam && (
+  <button
+    type="button"
+    onClick={openAddMembersDialog}
+    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+  >
+    + Add Members
+  </button>
+)}
   </div>
 
   {membersLoading ? (
@@ -345,15 +352,20 @@ async function handleRemoveMember(userId: number, memberName: string) {
           <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium capitalize text-gray-700">
             {member.role.replaceAll("_", " ")}
           </span>
-          {member.user_id !== project.manager_id && (
-  <button
-    type="button"
-    onClick={() => handleRemoveMember(member.user_id, member.name)}
-    disabled={removingUserId === member.user_id}
-    className="rounded-lg border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
-  >
-    {removingUserId === member.user_id ? "Removing..." : "Remove"}
-  </button>
+       {canManageTeam &&
+  member.user_id !== project.manager_id && (
+    <button
+      type="button"
+      onClick={() =>
+        handleRemoveMember(member.user_id, member.name)
+      }
+      disabled={removingUserId === member.user_id}
+      className="rounded-lg border border-red-200 px-3 py-1 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+    >
+      {removingUserId === member.user_id
+        ? "Removing..."
+        : "Remove"}
+    </button>
 )}
         </div>
       ))}

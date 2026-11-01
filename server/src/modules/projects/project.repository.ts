@@ -97,8 +97,8 @@ export async function findProjectById(
       name,
       description,
       client_name,
-      start_date,
-      deadline,
+    DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+DATE_FORMAT(deadline, '%Y-%m-%d') AS deadline,
       status,
       priority,
       budget,
@@ -143,8 +143,8 @@ export async function findProjectsByOrganization(
        p.name,
        p.description,
        p.client_name,
-       p.start_date,
-       p.deadline,
+   DATE_FORMAT(p.start_date, '%Y-%m-%d') AS start_date,
+DATE_FORMAT(p.deadline, '%Y-%m-%d') AS deadline,
        p.status,
        p.priority,
        p.budget,
@@ -279,3 +279,40 @@ export async function removeProjectMember(
 
   return result;
 }
+
+
+
+export async function findProjectsByEmployee(
+  organizationId: number,
+  userId: number
+): Promise<ProjectListRow[]> {
+  const [rows] = await db.execute<ProjectListRow[]>(
+    `SELECT
+       p.id,
+       p.name,
+       p.description,
+       p.client_name,
+       p.start_date,
+       p.deadline,
+       p.status,
+       p.priority,
+       p.budget,
+       p.manager_id,
+       manager.name AS manager_name,
+       p.created_by,
+       p.created_at,
+       p.updated_at
+     FROM projects p
+     INNER JOIN project_members pm
+       ON pm.project_id = p.id
+     INNER JOIN users manager
+       ON manager.id = p.manager_id
+     WHERE p.organization_id = ?
+       AND pm.user_id = ?
+     ORDER BY p.created_at DESC`,
+    [organizationId, userId]
+  );
+
+  return rows;
+}
+

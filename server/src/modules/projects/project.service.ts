@@ -6,7 +6,7 @@ import {
   createProject,
   findProjectById,
   findProjectsByOrganization ,findProjectMembers,
-  findAvailableProjectMembers, addProjectMembers, removeProjectMember
+  findAvailableProjectMembers, addProjectMembers, removeProjectMember, findProjectsByEmployee
 } from "./project.repository.js";
 import { RowDataPacket } from "mysql2/promise";
 
@@ -116,29 +116,32 @@ export async function createProjectService(
 
 
 
-export async function getProjectsService(
-  actor: ProjectActor
-) {
-  if (
-    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
-    actor.roleId !== MANAGER_ROLE_ID
-  ) {
-    throw new Error("FORBIDDEN");
+
+export async function getProjectsService(actor: ProjectActor) {
+  if (actor.roleId === ORGANIZATION_ADMIN_ROLE_ID) {
+    return await findProjectsByOrganization(actor.organizationId);
   }
 
-  const projects = await findProjectsByOrganization(
-    actor.organizationId
-  );
-
-  // Managers can initially see only projects assigned to them.
   if (actor.roleId === MANAGER_ROLE_ID) {
+    const projects = await findProjectsByOrganization(
+      actor.organizationId
+    );
+
     return projects.filter(
       (project) => project.manager_id === actor.userId
     );
   }
 
-  return projects;
+  if (actor.roleId === 4) {
+    return await findProjectsByEmployee(
+      actor.organizationId,
+      actor.userId
+    );
+  }
+
+  throw new Error("FORBIDDEN");
 }
+
 
 export async function getProjectByIdService(
   actor: ProjectActor,
@@ -146,7 +149,8 @@ export async function getProjectByIdService(
 ) {
   if (
     actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
-    actor.roleId !== MANAGER_ROLE_ID
+    actor.roleId !== MANAGER_ROLE_ID &&
+    actor.roleId !== 4
   ) {
     throw new Error("FORBIDDEN");
   }
@@ -168,12 +172,28 @@ export async function getProjectByIdService(
       throw new Error("PROJECT_NOT_FOUND");
     }
 
-    // Managers can access only projects assigned to them.
+    // Managers can view only their own projects.
     if (
       actor.roleId === MANAGER_ROLE_ID &&
       project.manager_id !== actor.userId
     ) {
       throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Employees can view only projects assigned to them.
+    if (actor.roleId === 4) {
+      const [rows] = await connection.execute<RowDataPacket[]>(
+        `SELECT id
+         FROM project_members
+         WHERE project_id = ?
+           AND user_id = ?
+         LIMIT 1`,
+        [projectId, actor.userId]
+      );
+
+      if (rows.length === 0) {
+        throw new Error("PROJECT_NOT_FOUND");
+      }
     }
 
     return project;
@@ -184,13 +204,15 @@ export async function getProjectByIdService(
 
 
 
+
 export async function getProjectMembersService(
   actor: ProjectActor,
   projectId: number
 ) {
   if (
     actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
-    actor.roleId !== MANAGER_ROLE_ID
+    actor.roleId !== MANAGER_ROLE_ID &&
+    actor.roleId !== 4
   ) {
     throw new Error("FORBIDDEN");
   }
@@ -212,12 +234,28 @@ export async function getProjectMembersService(
       throw new Error("PROJECT_NOT_FOUND");
     }
 
-    // Managers can view team members only for their own projects.
+    // Managers can access teams only for their own projects.
     if (
       actor.roleId === MANAGER_ROLE_ID &&
       project.manager_id !== actor.userId
     ) {
       throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Employees can view teams only for assigned projects.
+    if (actor.roleId === 4) {
+      const [rows] = await connection.execute<RowDataPacket[]>(
+        `SELECT id
+         FROM project_members
+         WHERE project_id = ?
+           AND user_id = ?
+         LIMIT 1`,
+        [projectId, actor.userId]
+      );
+
+      if (rows.length === 0) {
+        throw new Error("PROJECT_NOT_FOUND");
+      }
     }
 
     return await findProjectMembers(
@@ -416,6 +454,24 @@ export async function removeProjectMemberService(
 
     if (project.manager_id === userId) {
       throw new Error("CANNOT_REMOVE_PROJECT_MANAGER");
+
+      // Verify that the target user is an employee
+// belonging to the same organization.
+const [targetRows] = await connection.execute<RowDataPacket[]>(
+  `SELECT u.id
+   FROM users u
+   INNER JOIN roles r ON r.id = u.role_id
+   WHERE u.id = ?
+     AND u.organization_id = ?
+     AND r.name = 'employee'
+   LIMIT 1
+   FOR UPDATE`,
+  [userId, actor.organizationId]
+);
+
+if (targetRows.length === 0) {
+  throw new Error("INVALID_PROJECT_MEMBER");
+}
     }
 
     const result = await removeProjectMember(

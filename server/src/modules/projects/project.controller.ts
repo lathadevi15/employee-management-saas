@@ -320,11 +320,14 @@ export async function removeProjectMemberController(
       }
 
       if (
-        error.message === "INVALID_ID" ||
-        error.message === "CANNOT_REMOVE_PROJECT_MANAGER"
-      ) {
-        return res.status(400).json({ message: error.message });
-      }
+  error.message === "INVALID_ID" ||
+  error.message === "CANNOT_REMOVE_PROJECT_MANAGER" ||
+  error.message === "INVALID_PROJECT_MEMBER"
+) {
+  return res.status(400).json({
+    message: error.message,
+  });
+}
     }
 
     console.error("Remove project member error:", error);
