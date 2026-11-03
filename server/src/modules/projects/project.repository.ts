@@ -316,3 +316,64 @@ export async function findProjectsByEmployee(
   return rows;
 }
 
+
+
+export interface UpdateProjectData {
+  name: string;
+  description: string | null;
+  clientName: string | null;
+  startDate: string | null;
+  deadline: string | null;
+  status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+  priority: "low" | "medium" | "high" | "critical";
+  budget: number | null;
+  managerId?: number;
+}
+
+
+
+export async function updateProject(
+  connection: PoolConnection,
+  organizationId: number,
+  projectId: number,
+  data: UpdateProjectData
+): Promise<void> {
+  const fields = [
+    "name = ?",
+    "description = ?",
+    "client_name = ?",
+    "start_date = ?",
+    "deadline = ?",
+    "status = ?",
+    "priority = ?",
+    "budget = ?",
+  ];
+
+  const values: (string | number | null)[] = [
+    data.name,
+    data.description,
+    data.clientName,
+    data.startDate,
+    data.deadline,
+    data.status,
+    data.priority,
+    data.budget,
+  ];
+
+  if (data.managerId !== undefined) {
+    fields.push("manager_id = ?");
+    values.push(data.managerId);
+  }
+
+  values.push(projectId, organizationId);
+
+  await connection.execute(
+    `UPDATE projects
+     SET ${fields.join(", ")}
+     WHERE id = ?
+       AND organization_id = ?`,
+    values
+  );
+}
+
+

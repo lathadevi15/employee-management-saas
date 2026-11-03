@@ -2,7 +2,8 @@
 import { Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
 import { createProjectService, getProjectsService, getProjectByIdService, getProjectMembersService,
-  getAvailableProjectMembersService, addProjectMembersService, removeProjectMemberService
+  getAvailableProjectMembersService, addProjectMembersService, removeProjectMemberService,
+   updateProjectService 
  } from "./project.service.js";
 
 export async function createProjectController(
@@ -337,3 +338,60 @@ export async function removeProjectMemberController(
     });
   }
 }
+
+
+export async function updateProjectController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const projectId = Number(req.params.id);
+
+    const project = await updateProjectService(
+      {
+        userId: req.user!.userId,
+        organizationId: req.user!.organizationId,
+        roleId: req.user!.roleId,
+      },
+      projectId,
+      req.body
+    );
+
+    return res.status(200).json({
+      message: "Project updated successfully",
+      project,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "FORBIDDEN") {
+        return res.status(403).json({
+          message: "Access forbidden",
+        });
+      }
+
+      if (error.message === "PROJECT_NOT_FOUND") {
+        return res.status(404).json({
+          message: "Project not found",
+        });
+      }
+
+      if (
+        error.message === "INVALID_PROJECT_ID" ||
+        error.message === "VALIDATION_ERROR" ||
+        error.message === "INVALID_PROJECT_MANAGER" ||
+        error.message === "MANAGER_CANNOT_REASSIGN_PROJECT"
+      ) {
+        return res.status(400).json({
+          message: error.message,
+        });
+      }
+    }
+
+    console.error("Update project error:", error);
+
+    return res.status(500).json({
+      message: "Failed to update project",
+    });
+  }
+}
+

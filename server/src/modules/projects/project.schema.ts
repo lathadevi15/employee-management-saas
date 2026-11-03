@@ -76,6 +76,67 @@ export const addProjectMembersSchema = z
   })
   .strict();
 
+
+  
+export const updateProjectSchema = z
+  .object({
+    name: z.string().trim().min(2).max(150),
+
+    description: z
+      .string()
+      .max(5000)
+      .nullable()
+      .optional(),
+
+    clientName: z
+      .string()
+      .trim()
+      .max(150)
+      .nullable()
+      .optional(),
+
+    startDate: z.iso.date().nullable().optional(),
+
+    deadline: z.iso.date().nullable().optional(),
+
+    status: z.enum([
+      "planning",
+      "active",
+      "on_hold",
+      "completed",
+      "cancelled",
+    ]),
+
+    priority: z.enum([
+      "low",
+      "medium",
+      "high",
+      "critical",
+    ]),
+
+    budget: z.number().finite().min(0).nullable().optional(),
+
+    managerId: z.number().int().positive().optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (
+      data.startDate &&
+      data.deadline &&
+      data.deadline < data.startDate
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["deadline"],
+        message: "Deadline cannot be earlier than start date",
+      });
+    }
+  });
+
+export type UpdateProjectInput = z.infer<
+  typeof updateProjectSchema
+>;
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
 

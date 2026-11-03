@@ -3,7 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/auth.middleware.js";
 import { createProjectController, getProjectsController, getProjectByIdController,
     getProjectMembersController, getAvailableProjectMembersController, addProjectMembersController,
-    removeProjectMemberController
+    updateProjectController,    removeProjectMemberController
 } from "./project.controller.js";
 
 const router = Router();
@@ -34,5 +34,11 @@ router.delete(
   "/:id/members/:userId",
   authenticate,
   removeProjectMemberController
+);
+
+router.put(
+  "/:id",
+  authenticate,
+  updateProjectController
 );
 export default router;

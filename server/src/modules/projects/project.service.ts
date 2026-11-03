@@ -1,12 +1,13 @@
 
 import { db } from "../../config/database.js";
-import { createProjectSchema, addProjectMembersSchema } from "./project.schema.js";
+import { createProjectSchema, addProjectMembersSchema, updateProjectSchema  } from "./project.schema.js";
 import {
   addProjectMember,
   createProject,
   findProjectById,
   findProjectsByOrganization ,findProjectMembers,
-  findAvailableProjectMembers, addProjectMembers, removeProjectMember, findProjectsByEmployee
+  findAvailableProjectMembers, addProjectMembers, removeProjectMember, findProjectsByEmployee,
+  updateProject 
 } from "./project.repository.js";
 import { RowDataPacket } from "mysql2/promise";
 
@@ -487,6 +488,137 @@ if (targetRows.length === 0) {
     await connection.commit();
 
     return { removedUserId: userId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+
+
+export async function updateProjectService(
+  actor: ProjectActor,
+  projectId: number,
+  input: unknown
+) {
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const parsed = updateProjectSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new Error("VALIDATION_ERROR");
+  }
+
+  const data = parsed.data;
+
+  // Managers cannot change the project manager.
+  if (
+    actor.roleId === MANAGER_ROLE_ID &&
+    data.managerId !== undefined
+  ) {
+    throw new Error("MANAGER_CANNOT_REASSIGN_PROJECT");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Managers can edit only their assigned projects.
+    if (
+      actor.roleId === MANAGER_ROLE_ID &&
+      project.manager_id !== actor.userId
+    ) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // Only admins can assign a different project manager.
+    if (
+      actor.roleId === ORGANIZATION_ADMIN_ROLE_ID &&
+      data.managerId !== undefined
+    ) {
+      const [managerRows] =
+        await connection.execute<RowDataPacket[]>(
+          `SELECT u.id
+           FROM users u
+           INNER JOIN roles r ON r.id = u.role_id
+           WHERE u.id = ?
+             AND u.organization_id = ?
+             AND u.status = 'active'
+             AND r.name = 'manager'
+           LIMIT 1
+           FOR UPDATE`,
+          [data.managerId, actor.organizationId]
+        );
+
+      if (managerRows.length === 0) {
+        throw new Error("INVALID_PROJECT_MANAGER");
+      }
+    }
+
+    const updateData = {
+      ...data,
+      description: data.description ?? null,
+      clientName: data.clientName ?? null,
+      startDate: data.startDate ?? null,
+      deadline: data.deadline ?? null,
+      budget: data.budget ?? null,
+      ...(actor.roleId === MANAGER_ROLE_ID
+        ? { managerId: undefined }
+        : {}),
+    };
+
+    await updateProject(
+      connection,
+      actor.organizationId,
+      projectId,
+      updateData
+    );
+
+    // Keep the assigned project manager in project_members.
+    if (
+      actor.roleId === ORGANIZATION_ADMIN_ROLE_ID &&
+      data.managerId !== undefined &&
+      data.managerId !== project.manager_id
+    ) {
+      await connection.execute(
+        `INSERT INTO project_members (project_id, user_id)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)`,
+        [projectId, data.managerId]
+      );
+    }
+
+    const updatedProject = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    await connection.commit();
+
+    return updatedProject;
   } catch (error) {
     await connection.rollback();
     throw error;

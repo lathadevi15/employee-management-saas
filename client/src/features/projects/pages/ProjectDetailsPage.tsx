@@ -197,6 +197,11 @@ const { user } = useAuth();
 
 const canManageTeam =
   user?.roleId === 2 || user?.roleId === 3;
+  
+const canEditProject =
+  user?.roleId === 2 ||
+  (user?.roleId === 3 &&
+    project?.manager_id === user.userId);
   return (
     <div className="space-y-6 p-6">
       <Link
@@ -221,6 +226,14 @@ const canManageTeam =
           <span className="rounded-full bg-blue-100 px-3 py-1 text-sm capitalize text-blue-800">
             {project.status.replaceAll("_", " ")}
           </span>
+          {canEditProject && (
+  <Link
+    to={`/projects/${project.id}/edit`}
+    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+  >
+    Edit Project
+  </Link>
+)}
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

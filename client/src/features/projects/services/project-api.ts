@@ -149,3 +149,17 @@ export async function removeProjectMember(
 
   return response.data;
 }
+
+
+
+export async function updateProject(
+  projectId: number,
+  input: CreateProjectInput
+) {
+  const response = await apiClient.put<{
+    message: string;
+    project: Project;
+  }>(`/projects/${projectId}`, input);
+
+  return response.data.project;
+}
