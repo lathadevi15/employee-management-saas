@@ -163,3 +163,9 @@ export async function updateProject(
 
   return response.data.project;
 }
+
+
+export async function deleteProject(projectId: number) {
+  const response = await apiClient.delete(`/projects/${projectId}`);
+  return response.data;
+}

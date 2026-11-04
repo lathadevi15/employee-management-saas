@@ -7,7 +7,7 @@ import {
   findProjectById,
   findProjectsByOrganization ,findProjectMembers,
   findAvailableProjectMembers, addProjectMembers, removeProjectMember, findProjectsByEmployee,
-  updateProject 
+  updateProject ,deleteProject
 } from "./project.repository.js";
 import { RowDataPacket } from "mysql2/promise";
 
@@ -619,6 +619,59 @@ export async function updateProjectService(
     await connection.commit();
 
     return updatedProject;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+
+export async function deleteProjectService(
+  actor: ProjectActor,
+  projectId: number
+) {
+  // Only organization admins can delete projects.
+  if (actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(projectId) || projectId <= 0) {
+    throw new Error("INVALID_PROJECT_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Verify that the project belongs to the admin's organization.
+    const project = await findProjectById(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    const result = await deleteProject(
+      connection,
+      actor.organizationId,
+      projectId
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    await connection.commit();
+
+    return {
+      deletedProjectId: projectId,
+    };
   } catch (error) {
     await connection.rollback();
     throw error;

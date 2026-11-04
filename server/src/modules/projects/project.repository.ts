@@ -92,29 +92,32 @@ export async function findProjectById(
 ): Promise<ProjectRow | null> {
   const [rows] = await connection.execute<ProjectRow[]>(
     `SELECT
-      id,
-      organization_id,
-      name,
-      description,
-      client_name,
-    DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
-DATE_FORMAT(deadline, '%Y-%m-%d') AS deadline,
-      status,
-      priority,
-      budget,
-      manager_id,
-      created_by,
-      created_at,
-      updated_at
-     FROM projects
-     WHERE id = ? AND organization_id = ?
+      p.id,
+      p.organization_id,
+      p.name,
+      p.description,
+      p.client_name,
+      DATE_FORMAT(p.start_date, '%Y-%m-%d') AS start_date,
+      DATE_FORMAT(p.deadline, '%Y-%m-%d') AS deadline,
+      p.status,
+      p.priority,
+      p.budget,
+      p.manager_id,
+      manager.name AS manager_name,
+      p.created_by,
+      p.created_at,
+      p.updated_at
+     FROM projects p
+     LEFT JOIN users manager
+       ON manager.id = p.manager_id
+      AND manager.organization_id = p.organization_id
+     WHERE p.id = ? AND p.organization_id = ?
      LIMIT 1`,
     [projectId, organizationId]
   );
 
   return rows[0] ?? null;
 }
-
 
 
 export interface ProjectListRow extends RowDataPacket {
@@ -375,5 +378,21 @@ export async function updateProject(
     values
   );
 }
+
+export async function deleteProject(
+  connection: PoolConnection,
+  organizationId: number,
+  projectId: number
+): Promise<ResultSetHeader> {
+  const [result] = await connection.execute<ResultSetHeader>(
+    `DELETE FROM projects
+     WHERE id = ?
+       AND organization_id = ?`,
+    [projectId, organizationId]
+  );
+
+  return result;
+}
+
 
 

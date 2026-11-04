@@ -3,7 +3,7 @@ import { Response } from "express";
 import { AuthenticatedRequest } from "../../middleware/auth.middleware.js";
 import { createProjectService, getProjectsService, getProjectByIdService, getProjectMembersService,
   getAvailableProjectMembersService, addProjectMembersService, removeProjectMemberService,
-   updateProjectService 
+   updateProjectService , deleteProjectService 
  } from "./project.service.js";
 
 export async function createProjectController(
@@ -391,6 +391,55 @@ export async function updateProjectController(
 
     return res.status(500).json({
       message: "Failed to update project",
+    });
+  }
+}
+
+export async function deleteProjectController(
+  req: AuthenticatedRequest,
+  res: Response
+) {
+  try {
+    const projectId = Number(req.params.id);
+
+    const result = await deleteProjectService(
+      {
+        userId: req.user!.userId,
+        organizationId: req.user!.organizationId,
+        roleId: req.user!.roleId,
+      },
+      projectId
+    );
+
+    return res.status(200).json({
+      message: "Project deleted successfully",
+      ...result,
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "FORBIDDEN") {
+        return res.status(403).json({
+          message: "Access forbidden",
+        });
+      }
+
+      if (error.message === "PROJECT_NOT_FOUND") {
+        return res.status(404).json({
+          message: "Project not found",
+        });
+      }
+
+      if (error.message === "INVALID_PROJECT_ID") {
+        return res.status(400).json({
+          message: "Invalid project ID",
+        });
+      }
+    }
+
+    console.error("Delete project error:", error);
+
+    return res.status(500).json({
+      message: "Failed to delete project",
     });
   }
 }

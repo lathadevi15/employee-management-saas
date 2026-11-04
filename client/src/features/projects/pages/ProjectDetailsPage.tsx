@@ -1,11 +1,12 @@
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   getProjectById,
   getAvailableProjectMembers,
     addProjectMembers,
-  getProjectMembers,removeProjectMember,
+  getProjectMembers,removeProjectMember,deleteProject,
 
   type Project,
   type ProjectMember,
@@ -40,6 +41,8 @@ const [addMembersError, setAddMembersError] = useState("");
 const [addMembersSuccess, setAddMembersSuccess] = useState("");
 const [removingUserId, setRemovingUserId] = useState<number | null>(null);
 const [removeError, setRemoveError] = useState("");
+const navigate = useNavigate();
+
 
   useEffect(() => {
     let cancelled = false;
@@ -202,6 +205,21 @@ const canEditProject =
   user?.roleId === 2 ||
   (user?.roleId === 3 &&
     project?.manager_id === user.userId);
+    const handleDeleteProject = async () => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this project? This action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteProject(Number(id));
+    navigate("/projects");
+  } catch (error) {
+    console.error("Failed to delete project:", error);
+    alert("Failed to delete project. Please try again.");
+  }
+};
   return (
     <div className="space-y-6 p-6">
       <Link
@@ -233,6 +251,12 @@ const canEditProject =
   >
     Edit Project
   </Link>
+  
+)}
+{user?.roleId === 2 && (
+  <button onClick={handleDeleteProject}>
+    Delete Project
+  </button>
 )}
         </div>
 
