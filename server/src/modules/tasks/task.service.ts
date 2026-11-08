@@ -7,9 +7,10 @@ import {
   findTasksByEmployee,
    findAvailableAssigneesForProject,
   findAvailableAssigneesForOrganization,
-  updateTaskAssignee
+  updateTaskAssignee,
+  updateTaskStatus 
 } from "./task.repository";
-import { createTaskSchema } from "./task.schema";
+import { createTaskSchema, updateTaskStatusSchema  } from "./task.schema";
 import { RowDataPacket } from "mysql2/promise";
 
 export interface TaskActor {
@@ -415,6 +416,63 @@ export const updateTaskAssigneeService = async (
     return {
       taskId,
       assignedTo,
+    };
+  } finally {
+    connection.release();
+  }
+};
+
+export const updateTaskStatusService = async (
+  actor: TaskActor,
+  taskId: number,
+  input: unknown
+) => {
+  // Only employees can update task status.
+  if (actor.roleId !== EMPLOYEE_ROLE_ID) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(taskId) || taskId <= 0) {
+    throw new Error("INVALID_TASK_ID");
+  }
+
+  // Validate the requested status.
+  const validation = updateTaskStatusSchema.safeParse(input);
+
+  if (!validation.success) {
+    throw new Error("VALIDATION_ERROR");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    // Find the task within the employee's organization.
+    const task = await findTaskById(
+      connection,
+      actor.organizationId,
+      taskId
+    );
+
+    if (!task) {
+      throw new Error("TASK_NOT_FOUND");
+    }
+
+    // Verify that the task belongs to this employee.
+    if (task.assigned_to !== actor.userId) {
+      throw new Error("FORBIDDEN");
+    }
+
+    // Update task status.
+    await updateTaskStatus(
+      connection,
+      actor.organizationId,
+      taskId,
+      validation.data.status
+    );
+
+    return {
+      taskId,
+      status: validation.data.status,
     };
   } finally {
     connection.release();

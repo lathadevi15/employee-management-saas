@@ -39,5 +39,19 @@ export const createTaskSchema = z
       path: ["dueDate"],
     }
   );
+export const updateTaskStatusSchema = z
+  .object({
+    status: z.enum([
+      "to_do",
+      "in_progress",
+      "in_review",
+      "blocked",
+      "completed",
+    ]),
+  })
+  .strict();
 
+export type UpdateTaskStatusInput = z.infer<
+  typeof updateTaskStatusSchema
+>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

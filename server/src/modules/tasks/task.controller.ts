@@ -6,6 +6,7 @@ import {
   getTaskByIdService,
   getAvailableAssigneesService,
    updateTaskAssigneeService,
+   updateTaskStatusService 
 } from "./task.service";
 
 export async function createTaskController(
@@ -249,6 +250,59 @@ export const updateTaskAssigneeController = async (
     }
 
     console.error("Update task assignee error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export const updateTaskStatusController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const actor = {
+      userId: req.user!.userId,
+      organizationId: req.user!.organizationId,
+      roleId: req.user!.roleId,
+    };
+
+    const taskId = Number(req.params.id);
+
+    const result = await updateTaskStatusService(
+      actor,
+      taskId,
+      req.body
+    );
+
+    return res.status(200).json({
+      message: "Task status updated successfully",
+      task: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "INTERNAL_SERVER_ERROR";
+
+    if (message === "INVALID_TASK_ID") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (message === "VALIDATION_ERROR") {
+      return res.status(400).json({ message: "Invalid task status" });
+    }
+
+    if (message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (message === "FORBIDDEN") {
+      return res.status(403).json({
+        message: "You are not allowed to update this task status",
+      });
+    }
+
+    console.error("Update task status error:", error);
 
     return res.status(500).json({
       message: "Internal server error",

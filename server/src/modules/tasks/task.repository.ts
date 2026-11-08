@@ -291,3 +291,20 @@ export const updateTaskAssignee = async (
     [assignedTo, taskId, organizationId]
   );
 };
+
+export const updateTaskStatus = async (
+  connection: PoolConnection,
+  organizationId: number,
+  taskId: number,
+  status: string
+): Promise<void> => {
+  await connection.query(
+    `
+    UPDATE tasks
+    SET status = ?
+    WHERE id = ?
+      AND organization_id = ?
+    `,
+    [status, taskId, organizationId]
+  );
+};

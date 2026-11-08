@@ -6,7 +6,8 @@ import {
   getTasksController,
   getTaskByIdController,
   getAvailableAssigneesController,
-  updateTaskAssigneeController
+  updateTaskAssigneeController,
+    updateTaskStatusController,
 } from "./task.controller";
 
 const router = Router();
@@ -27,6 +28,12 @@ router.patch(
   "/:id/assignee",
   authenticate,
   updateTaskAssigneeController
+);
+
+router.patch(
+  "/:id/status",
+  authenticate,
+  updateTaskStatusController
 );
 
 export default router;
