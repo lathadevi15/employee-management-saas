@@ -4,6 +4,8 @@ import {
   createTaskService,
   getTasksService,
   getTaskByIdService,
+  getAvailableAssigneesService,
+   updateTaskAssigneeService,
 } from "./task.service";
 
 export async function createTaskController(
@@ -138,3 +140,118 @@ export async function getTaskByIdController(
     });
   }
 }
+
+export const getAvailableAssigneesController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const actor = {
+      userId: req.user!.userId,
+      organizationId: req.user!.organizationId,
+      roleId: req.user!.roleId,
+    };
+
+    const taskId = Number(req.params.id);
+
+    const assignees = await getAvailableAssigneesService(
+      actor,
+      taskId
+    );
+
+    return res.status(200).json({
+      assignees,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "INTERNAL_SERVER_ERROR";
+
+    if (message === "INVALID_TASK_ID") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (message === "FORBIDDEN") {
+      return res.status(403).json({ message: "You are not allowed to view available assignees" });
+    }
+
+    console.error("Get available assignees error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+export const updateTaskAssigneeController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const actor = {
+      userId: req.user!.userId,
+      organizationId: req.user!.organizationId,
+      roleId: req.user!.roleId,
+    };
+
+    const taskId = Number(req.params.id);
+    const { assignedTo } = req.body;
+
+    if (
+      !Object.prototype.hasOwnProperty.call(req.body, "assignedTo") ||
+      (assignedTo !== null && typeof assignedTo !== "number")
+    ) {
+      return res.status(400).json({
+        message: "assignedTo must be an employee ID or null",
+      });
+    }
+
+    const result = await updateTaskAssigneeService(
+      actor,
+      taskId,
+      assignedTo
+    );
+
+    return res.status(200).json({
+      message: assignedTo === null
+        ? "Task unassigned successfully"
+        : "Task assignee updated successfully",
+      task: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "INTERNAL_SERVER_ERROR";
+
+    if (message === "INVALID_TASK_ID") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (message === "FORBIDDEN") {
+      return res.status(403).json({ message: "You are not allowed to assign this task" });
+    }
+
+    if (message === "INVALID_ASSIGNEE") {
+      return res.status(400).json({ message: "Invalid or inactive employee" });
+    }
+
+    if (message === "ASSIGNEE_NOT_PROJECT_MEMBER") {
+      return res.status(400).json({
+        message: "Employee must be a member of the project",
+      });
+    }
+
+    console.error("Update task assignee error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};

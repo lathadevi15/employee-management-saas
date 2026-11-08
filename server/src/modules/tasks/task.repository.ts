@@ -173,10 +173,11 @@ export async function findTasksByManager(
     WHERE t.organization_id = ?
       AND (
         p.manager_id = ?
-        OR (t.project_id IS NULL AND t.created_by = ?)
+        OR (t.created_by = ?
+            OR t.assigned_to = ?)
       )
     ORDER BY t.created_at DESC`,
-    [organizationId, managerId, managerId]
+    [organizationId, managerId, managerId, managerId]
   );
 
   return rows;
@@ -220,3 +221,73 @@ export async function findTasksByEmployee(
 
   return rows;
 }
+
+export const findAvailableAssigneesForProject = async (
+  connection: PoolConnection,
+  organizationId: number,
+  projectId: number
+) => {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      ep.employee_code,
+      ep.job_title
+    FROM project_members pm
+    INNER JOIN users u ON u.id = pm.user_id
+    LEFT JOIN employee_profiles ep ON ep.user_id = u.id
+    WHERE pm.project_id = ?
+      AND u.organization_id = ?
+      AND u.role_id = 4
+      AND u.status = 'active'
+    ORDER BY u.name ASC
+    `,
+    [projectId, organizationId]
+  );
+
+  return rows;
+};
+
+export const findAvailableAssigneesForOrganization = async (
+  connection: PoolConnection,
+  organizationId: number
+) => {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      ep.employee_code,
+      ep.job_title
+    FROM users u
+    LEFT JOIN employee_profiles ep ON ep.user_id = u.id
+    WHERE u.organization_id = ?
+      AND u.role_id = 4
+      AND u.status = 'active'
+    ORDER BY u.name ASC
+    `,
+    [organizationId]
+  );
+
+  return rows;
+};
+
+export const updateTaskAssignee = async (
+  connection: PoolConnection,
+  organizationId: number,
+  taskId: number,
+  assignedTo: number | null
+): Promise<void> => {
+  await connection.query(
+    `
+    UPDATE tasks
+    SET assigned_to = ?
+    WHERE id = ?
+      AND organization_id = ?
+    `,
+    [assignedTo, taskId, organizationId]
+  );
+};
