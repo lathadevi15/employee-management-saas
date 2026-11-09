@@ -8,7 +8,8 @@ import {
   getAvailableAssigneesController,
   updateTaskAssigneeController,
     updateTaskStatusController,
-    updateTaskController
+    updateTaskController,
+    deleteTaskController
 } from "./task.controller";
 
 const router = Router();
@@ -38,5 +39,5 @@ router.patch(
   authenticate,
   updateTaskStatusController
 );
-
+router.delete("/:id", authenticate, deleteTaskController);
 export default router;

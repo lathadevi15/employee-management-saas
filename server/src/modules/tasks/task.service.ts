@@ -9,7 +9,8 @@ import {
   findAvailableAssigneesForOrganization,
   updateTaskAssignee,
   updateTaskStatus,
-  updateTask
+  updateTask,
+  deleteTask 
 } from "./task.repository";
 import { createTaskSchema, updateTaskStatusSchema, updateTaskSchema  } from "./task.schema";
 import { RowDataPacket } from "mysql2/promise";
@@ -595,6 +596,72 @@ export const updateTaskService = async (
     return {
       taskId,
       ...data,
+    };
+  } finally {
+    connection.release();
+  }
+};
+
+export const deleteTaskService = async (
+  actor: TaskActor,
+  taskId: number
+) => {
+  // Only Admins and Managers can delete tasks.
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(taskId) || taskId <= 0) {
+    throw new Error("INVALID_TASK_ID");
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    // Find the task within the actor's organization.
+    const task = await findTaskById(
+      connection,
+      actor.organizationId,
+      taskId
+    );
+
+    if (!task) {
+      throw new Error("TASK_NOT_FOUND");
+    }
+
+    // Manager permission check.
+    if (actor.roleId === MANAGER_ROLE_ID) {
+      if (task.project_id !== null) {
+        const [projects] = await connection.query<RowDataPacket[]>(
+          `
+          SELECT id
+          FROM projects
+          WHERE id = ?
+            AND organization_id = ?
+            AND manager_id = ?
+          `,
+          [task.project_id, actor.organizationId, actor.userId]
+        );
+
+        if (projects.length === 0) {
+          throw new Error("FORBIDDEN");
+        }
+      } else if (task.created_by !== actor.userId) {
+        throw new Error("FORBIDDEN");
+      }
+    }
+
+    await deleteTask(
+      connection,
+      actor.organizationId,
+      taskId
+    );
+
+    return {
+      taskId,
     };
   } finally {
     connection.release();

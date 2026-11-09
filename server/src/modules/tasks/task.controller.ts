@@ -7,7 +7,8 @@ import {
   getAvailableAssigneesService,
    updateTaskAssigneeService,
    updateTaskStatusService ,
-   updateTaskService
+   updateTaskService,
+   deleteTaskService
 } from "./task.service";
 
 export async function createTaskController(
@@ -367,6 +368,52 @@ export const updateTaskController = async (
     }
 
     console.error("Update task error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+
+export const deleteTaskController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const actor = {
+      userId: req.user!.userId,
+      organizationId: req.user!.organizationId,
+      roleId: req.user!.roleId,
+    };
+
+    const taskId = Number(req.params.id);
+
+    const result = await deleteTaskService(actor, taskId);
+
+    return res.status(200).json({
+      message: "Task deleted successfully",
+      task: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "INTERNAL_SERVER_ERROR";
+
+    if (message === "INVALID_TASK_ID") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (message === "FORBIDDEN") {
+      return res.status(403).json({
+        message: "You are not allowed to delete this task",
+      });
+    }
+
+    console.error("Delete task error:", error);
 
     return res.status(500).json({
       message: "Internal server error",

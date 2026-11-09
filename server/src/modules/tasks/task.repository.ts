@@ -340,3 +340,19 @@ export const updateTask = async (
     ]
   );
 };
+
+
+export const deleteTask = async (
+  connection: PoolConnection,
+  organizationId: number,
+  taskId: number
+): Promise<void> => {
+  await connection.query(
+    `
+    DELETE FROM tasks
+    WHERE id = ?
+      AND organization_id = ?
+    `,
+    [taskId, organizationId]
+  );
+};
