@@ -8,9 +8,10 @@ import {
    findAvailableAssigneesForProject,
   findAvailableAssigneesForOrganization,
   updateTaskAssignee,
-  updateTaskStatus 
+  updateTaskStatus,
+  updateTask
 } from "./task.repository";
-import { createTaskSchema, updateTaskStatusSchema  } from "./task.schema";
+import { createTaskSchema, updateTaskStatusSchema, updateTaskSchema  } from "./task.schema";
 import { RowDataPacket } from "mysql2/promise";
 
 export interface TaskActor {
@@ -473,6 +474,127 @@ export const updateTaskStatusService = async (
     return {
       taskId,
       status: validation.data.status,
+    };
+  } finally {
+    connection.release();
+  }
+};
+
+export const updateTaskService = async (
+  actor: TaskActor,
+  taskId: number,
+  input: unknown
+) => {
+  // Only Admins and Managers can edit task details.
+  if (
+    actor.roleId !== ORGANIZATION_ADMIN_ROLE_ID &&
+    actor.roleId !== MANAGER_ROLE_ID
+  ) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!Number.isSafeInteger(taskId) || taskId <= 0) {
+    throw new Error("INVALID_TASK_ID");
+  }
+
+  // Validate request data.
+  const validation = updateTaskSchema.safeParse(input);
+
+  if (!validation.success) {
+    throw new Error("VALIDATION_ERROR");
+  }
+
+  const data = validation.data;
+
+  const connection = await db.getConnection();
+
+  try {
+    // Find task within the actor's organization.
+    const task = await findTaskById(
+      connection,
+      actor.organizationId,
+      taskId
+    );
+
+    if (!task) {
+      throw new Error("TASK_NOT_FOUND");
+    }
+
+    // Manager permission check.
+    if (actor.roleId === MANAGER_ROLE_ID) {
+      if (task.project_id !== null) {
+        const [projects] = await connection.query<RowDataPacket[]>(
+          `
+          SELECT id
+          FROM projects
+          WHERE id = ?
+            AND organization_id = ?
+            AND manager_id = ?
+          `,
+          [task.project_id, actor.organizationId, actor.userId]
+        );
+
+        if (projects.length === 0) {
+          throw new Error("FORBIDDEN");
+        }
+      } else if (task.created_by !== actor.userId) {
+        throw new Error("FORBIDDEN");
+      }
+    }
+
+    // Validate the new project if provided.
+    if (data.projectId !== null) {
+      const [projects] = await connection.query<RowDataPacket[]>(
+        `
+        SELECT id, manager_id
+        FROM projects
+        WHERE id = ?
+          AND organization_id = ?
+        `,
+        [data.projectId, actor.organizationId]
+      );
+
+      if (projects.length === 0) {
+        throw new Error("PROJECT_NOT_FOUND");
+      }
+
+      // Manager can only move tasks into projects they manage.
+      if (
+        actor.roleId === MANAGER_ROLE_ID &&
+        projects[0].manager_id !== actor.userId
+      ) {
+        throw new Error("FORBIDDEN");
+      }
+
+      // Existing assignee must belong to the destination project.
+      if (task.assigned_to !== null) {
+        const [members] = await connection.query<RowDataPacket[]>(
+          `
+          SELECT id
+          FROM project_members
+          WHERE project_id = ?
+            AND user_id = ?
+          `,
+          [data.projectId, task.assigned_to]
+        );
+
+        if (members.length === 0) {
+          throw new Error("ASSIGNEE_NOT_PROJECT_MEMBER");
+        }
+      }
+    }
+
+    // Save task details.
+    await updateTask(
+      connection,
+      actor.organizationId,
+      taskId,
+      data
+    );
+
+    return {
+      taskId,
+      ...data,
     };
   } finally {
     connection.release();

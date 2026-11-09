@@ -8,6 +8,7 @@ import {
   getAvailableAssigneesController,
   updateTaskAssigneeController,
     updateTaskStatusController,
+    updateTaskController
 } from "./task.controller";
 
 const router = Router();
@@ -17,6 +18,8 @@ router.post("/", authenticate, createTaskController);
 router.get("/", authenticate, getTasksController);
 
 router.get("/:id", authenticate, getTaskByIdController);
+
+router.put("/:id", authenticate, updateTaskController);
 
 router.get(
   "/:id/available-assignees",

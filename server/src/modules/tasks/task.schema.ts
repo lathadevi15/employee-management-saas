@@ -55,3 +55,27 @@ export type UpdateTaskStatusInput = z.infer<
   typeof updateTaskStatusSchema
 >;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+
+export const updateTaskSchema = z
+  .object({
+    title: z.string().trim().min(2).max(150),
+    description: z.string().max(5000).nullable(),
+    projectId: z.number().int().positive().nullable(),
+    priority: z.enum(["low", "medium", "high", "critical"]),
+    startDate: z.iso.date().nullable(),
+    dueDate: z.iso.date().nullable(),
+  })
+  .strict()
+  .refine(
+    data =>
+      !data.startDate ||
+      !data.dueDate ||
+      data.dueDate >= data.startDate,
+    {
+      message: "Due date cannot be earlier than start date",
+      path: ["dueDate"],
+    }
+  );
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

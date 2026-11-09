@@ -1,5 +1,5 @@
 import { PoolConnection, ResultSetHeader } from "mysql2/promise";
-import { CreateTaskInput } from "./task.schema";
+import { CreateTaskInput, UpdateTaskInput } from "./task.schema";
 import { RowDataPacket } from "mysql2/promise";
 
 
@@ -306,5 +306,37 @@ export const updateTaskStatus = async (
       AND organization_id = ?
     `,
     [status, taskId, organizationId]
+  );
+};
+
+export const updateTask = async (
+  connection: PoolConnection,
+  organizationId: number,
+  taskId: number,
+  data: UpdateTaskInput
+): Promise<void> => {
+  await connection.query(
+    `
+    UPDATE tasks
+    SET
+      project_id = ?,
+      title = ?,
+      description = ?,
+      priority = ?,
+      start_date = ?,
+      due_date = ?
+    WHERE id = ?
+      AND organization_id = ?
+    `,
+    [
+      data.projectId,
+      data.title,
+      data.description,
+      data.priority,
+      data.startDate,
+      data.dueDate,
+      taskId,
+      organizationId,
+    ]
   );
 };

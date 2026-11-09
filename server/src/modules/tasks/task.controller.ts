@@ -6,7 +6,8 @@ import {
   getTaskByIdService,
   getAvailableAssigneesService,
    updateTaskAssigneeService,
-   updateTaskStatusService 
+   updateTaskStatusService ,
+   updateTaskService
 } from "./task.service";
 
 export async function createTaskController(
@@ -303,6 +304,69 @@ export const updateTaskStatusController = async (
     }
 
     console.error("Update task status error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export const updateTaskController = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const actor = {
+      userId: req.user!.userId,
+      organizationId: req.user!.organizationId,
+      roleId: req.user!.roleId,
+    };
+
+    const taskId = Number(req.params.id);
+
+    const result = await updateTaskService(
+      actor,
+      taskId,
+      req.body
+    );
+
+    return res.status(200).json({
+      message: "Task updated successfully",
+      task: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "INTERNAL_SERVER_ERROR";
+
+    if (message === "INVALID_TASK_ID") {
+      return res.status(400).json({ message: "Invalid task ID" });
+    }
+
+    if (message === "VALIDATION_ERROR") {
+      return res.status(400).json({ message: "Invalid task data" });
+    }
+
+    if (message === "TASK_NOT_FOUND") {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    if (message === "PROJECT_NOT_FOUND") {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    if (message === "FORBIDDEN") {
+      return res.status(403).json({
+        message: "You are not allowed to edit this task",
+      });
+    }
+
+    if (message === "ASSIGNEE_NOT_PROJECT_MEMBER") {
+      return res.status(400).json({
+        message: "The current assignee is not a member of the selected project",
+      });
+    }
+
+    console.error("Update task error:", error);
 
     return res.status(500).json({
       message: "Internal server error",
