@@ -34,3 +34,8 @@ export const createTask = async (
 
   return response.data;
 };
+
+export const getTaskById = async (taskId: number) => {
+  const response = await apiClient.get(`/tasks/${taskId}`);
+  return response.data.task;
+};

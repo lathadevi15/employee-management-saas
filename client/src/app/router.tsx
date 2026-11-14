@@ -17,6 +17,7 @@ import ProjectDetailsPage from "../features/projects/pages/ProjectDetailsPage";
 import EditProjectPage from "../features/projects/pages/EditProjectPage";
 import TaskListPage from "../features/tasks/pages/TaskListPage";
 import CreateTaskPage from "../features/tasks/pages/CreateTaskPage";
+import TaskDetailsPage from "../features/tasks/pages/TaskDetailsPage";
 
 export const router = createBrowserRouter([
   {
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
   element: <TaskListPage />,
 },
 { path: "/tasks/create", element: <CreateTaskPage /> },
+{ path: "/tasks/:id", element: <TaskDetailsPage /> },
     
   ],
 },

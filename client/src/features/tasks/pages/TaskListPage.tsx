@@ -134,10 +134,11 @@ const filteredTasks = tasks.filter((task) => {
       ) : (
         <div className="space-y-4">
           {filteredTasks.map((task) => (
-            <div
-              key={task.id}
-              className="border rounded-lg p-4"
-            >
+           <div
+  key={task.id}
+  onClick={() => navigate(`/tasks/${task.id}`)}
+  className="border rounded-lg p-4 cursor-pointer hover:shadow-md hover:border-blue-400 transition"
+>
               <h2 className="font-semibold">{task.title}</h2>
 
               <p className="text-sm text-gray-500">
@@ -154,6 +155,9 @@ const filteredTasks = tasks.filter((task) => {
               <p>
                 Assigned to: {task.assignee_name ?? "Unassigned"}
               </p>
+              <p className="text-sm text-blue-600 mt-3">
+  View Details →
+</p>
             </div>
           ))}
         </div>
