@@ -67,3 +67,31 @@ export const updateTask = async (
 
   return response.data;
 };
+
+export const updateTaskAssignee = async (
+  taskId: number,
+  assignedTo: number | null
+) => {
+  const response = await apiClient.patch(
+    `/tasks/${taskId}/assignee`,
+    { assignedTo }
+  );
+
+  return response.data;
+};
+export interface TaskAssignee {
+  id: number;
+  name: string;
+  email: string;
+  employee_code: string;
+  job_title: string | null;
+}
+export const getAvailableTaskAssignees = async (
+  taskId: number
+): Promise<TaskAssignee[]> => {
+  const response = await apiClient.get(
+    `/tasks/${taskId}/available-assignees`
+  );
+
+  return response.data.assignees;
+};
