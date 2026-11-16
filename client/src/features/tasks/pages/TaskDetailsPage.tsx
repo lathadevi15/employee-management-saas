@@ -71,12 +71,21 @@ const TaskDetailsPage = () => {
   return (
     <div className="max-w-4xl mx-auto p-6">
 
-      <button
-        onClick={() => navigate("/tasks")}
-        className="text-blue-600 mb-5"
-      >
-        ← Back to Tasks
-      </button>
+     <div className="flex justify-between items-center mb-5">
+  <button
+    onClick={() => navigate("/tasks")}
+    className="text-blue-600"
+  >
+    ← Back to Tasks
+  </button>
+
+  <button
+    onClick={() => navigate(`/tasks/${id}/edit`)}
+    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+  >
+    Edit Task
+  </button>
+</div>
 
       <div className="border rounded-xl p-6 space-y-6">
 
