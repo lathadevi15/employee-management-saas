@@ -6,6 +6,7 @@ import {
   getAvailableTaskAssignees,
   updateTaskAssignee,
   updateTaskStatus,
+  deleteTask,
   type TaskAssignee,
 } from "../services/task-api";
 import TaskStatusBadge from "../components/TaskStatusBadge";
@@ -45,6 +46,8 @@ const [statusError, setStatusError] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [assignmentError, setAssignmentError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+const [deleteError, setDeleteError] = useState("");
 
   // Fetch task details
   useEffect(() => {
@@ -178,24 +181,65 @@ const [statusError, setStatusError] = useState("");
     setStatusSaving(false);
   }
 };
+const handleDeleteTask = async () => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this task? This action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setDeleting(true);
+    setDeleteError("");
+
+    await deleteTask(Number(id));
+
+    navigate("/tasks");
+  } catch (error: any) {
+    console.error("Failed to delete task:", error);
+
+    setDeleteError(
+      error.response?.data?.message ||
+        "Failed to delete task. Please try again."
+    );
+  } finally {
+    setDeleting(false);
+  }
+};
   return (
     <div className="max-w-4xl mx-auto p-6">
 
       <div className="flex justify-between items-center mb-5">
-        <button
-          onClick={() => navigate("/tasks")}
-          className="text-blue-600"
-        >
-          ← Back to Tasks
-        </button>
+  <button
+    onClick={() => navigate("/tasks")}
+    className="text-blue-600"
+  >
+    ← Back to Tasks
+  </button>
 
-        <button
-          onClick={() => navigate(`/tasks/${id}/edit`)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          Edit Task
-        </button>
-      </div>
+  <div className="flex gap-3">
+    <button
+      onClick={() => navigate(`/tasks/${id}/edit`)}
+      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+    >
+      Edit Task
+    </button>
+
+    <button
+      onClick={handleDeleteTask}
+      disabled={deleting}
+      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+    >
+      {deleting ? "Deleting..." : "Delete Task"}
+    </button>
+  </div>
+</div>
+
+{deleteError && (
+  <p className="text-sm text-red-600 mb-4">
+    {deleteError}
+  </p>
+)}
 
       <div className="border rounded-xl p-6 space-y-6">
 

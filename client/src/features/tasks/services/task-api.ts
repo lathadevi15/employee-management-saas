@@ -111,3 +111,8 @@ export const updateTaskStatus = async (
 
   return response.data;
 };
+
+export const deleteTask = async (taskId: number) => {
+  const response = await apiClient.delete(`/tasks/${taskId}`);
+  return response.data;
+};
