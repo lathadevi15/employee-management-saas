@@ -95,3 +95,19 @@ export const getAvailableTaskAssignees = async (
 
   return response.data.assignees;
 };
+
+export interface UpdateTaskStatusInput {
+  status: "to_do" | "in_progress" | "in_review" | "blocked" | "completed";
+}
+
+export const updateTaskStatus = async (
+  taskId: number,
+  input: UpdateTaskStatusInput
+) => {
+  const response = await apiClient.patch(
+    `/tasks/${taskId}/status`,
+    input
+  );
+
+  return response.data;
+};

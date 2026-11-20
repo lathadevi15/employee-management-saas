@@ -5,6 +5,7 @@ import {
   getTaskById,
   getAvailableTaskAssignees,
   updateTaskAssignee,
+  updateTaskStatus,
   type TaskAssignee,
 } from "../services/task-api";
 import TaskStatusBadge from "../components/TaskStatusBadge";
@@ -34,6 +35,9 @@ const TaskDetailsPage = () => {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
+const [statusSaving, setStatusSaving] = useState(false);
+const [statusError, setStatusError] = useState("");
 
   // Assignment state
   const [assignees, setAssignees] = useState<TaskAssignee[]>([]);
@@ -89,6 +93,11 @@ const TaskDetailsPage = () => {
 
     fetchAssignees();
   }, [task?.id, id]);
+  useEffect(() => {
+  if (task) {
+    setSelectedStatus(task.status);
+  }
+}, [task?.id, task?.status]);
 
   // Save assignment
   const handleSaveAssignment = async () => {
@@ -140,6 +149,35 @@ const TaskDetailsPage = () => {
   }
 
   // Main UI
+
+  const handleSaveStatus = async () => {
+  try {
+    setStatusSaving(true);
+    setStatusError("");
+
+    await updateTaskStatus(Number(id), {
+      status: selectedStatus as
+        | "to_do"
+        | "in_progress"
+        | "in_review"
+        | "blocked"
+        | "completed",
+    });
+
+    const updatedTask = await getTaskById(Number(id));
+    setTask(updatedTask);
+
+  } catch (error: any) {
+    console.error("Failed to update task status:", error);
+
+    setStatusError(
+      error.response?.data?.message ||
+        "Failed to update task status."
+    );
+  } finally {
+    setStatusSaving(false);
+  }
+};
   return (
     <div className="max-w-4xl mx-auto p-6">
 
@@ -171,10 +209,44 @@ const TaskDetailsPage = () => {
           </p>
         </div>
 
-        <div className="flex gap-3">
-          <TaskStatusBadge status={task.status} />
-          <TaskPriorityBadge priority={task.priority} />
-        </div>
+      <div className="space-y-3">
+  <div className="flex gap-3">
+    <TaskStatusBadge status={task.status} />
+    <TaskPriorityBadge priority={task.priority} />
+  </div>
+
+  <div className="max-w-sm space-y-2">
+    <label className="block text-sm font-medium">
+      Update Task Status
+    </label>
+
+    <select
+      value={selectedStatus}
+      onChange={(e) => setSelectedStatus(e.target.value)}
+      className="w-full border rounded-lg px-3 py-2"
+    >
+      <option value="to_do">To Do</option>
+      <option value="in_progress">In Progress</option>
+      <option value="in_review">In Review</option>
+      <option value="blocked">Blocked</option>
+      <option value="completed">Completed</option>
+    </select>
+
+    <button
+      onClick={handleSaveStatus}
+      disabled={statusSaving || selectedStatus === task.status}
+      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+    >
+      {statusSaving ? "Updating..." : "Update Status"}
+    </button>
+
+    {statusError && (
+      <p className="text-sm text-red-600">
+        {statusError}
+      </p>
+    )}
+  </div>
+</div>
 
         <div>
           <h2 className="font-medium mb-2">Description</h2>
