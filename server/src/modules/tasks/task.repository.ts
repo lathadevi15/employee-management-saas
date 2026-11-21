@@ -49,6 +49,7 @@ export interface TaskRow extends RowDataPacket {
   organization_id: number;
   project_id: number | null;
   project_name: string | null;
+  project_manager_id: number | null;
   title: string;
   description: string | null;
   status: string;
@@ -75,6 +76,7 @@ export async function findTaskById(
       t.organization_id,
       t.project_id,
       p.name AS project_name,
+      p.manager_id AS project_manager_id,
       t.title,
       t.description,
       t.status,
@@ -114,6 +116,7 @@ export async function findTasksByOrganization(
       t.organization_id,
       t.project_id,
       p.name AS project_name,
+      p.manager_id AS project_manager_id,
       t.title,
       t.description,
       t.status,
@@ -151,6 +154,7 @@ export async function findTasksByManager(
       t.organization_id,
       t.project_id,
       p.name AS project_name,
+      p.manager_id AS project_manager_id,
       t.title,
       t.description,
       t.status,
@@ -173,8 +177,7 @@ export async function findTasksByManager(
     WHERE t.organization_id = ?
       AND (
         p.manager_id = ?
-        OR (t.created_by = ?
-            OR t.assigned_to = ?)
+        OR (t.project_id IS NULL AND (t.created_by = ? OR t.assigned_to = ?))
       )
     ORDER BY t.created_at DESC`,
     [organizationId, managerId, managerId, managerId]
@@ -194,6 +197,7 @@ export async function findTasksByEmployee(
       t.organization_id,
       t.project_id,
       p.name AS project_name,
+      p.manager_id AS project_manager_id,
       t.title,
       t.description,
       t.status,
@@ -225,7 +229,8 @@ export async function findTasksByEmployee(
 export const findAvailableAssigneesForProject = async (
   connection: PoolConnection,
   organizationId: number,
-  projectId: number
+  projectId: number,
+  allowedRoleIds: number[] = [4]
 ) => {
   const [rows] = await connection.query<RowDataPacket[]>(
     `
@@ -234,17 +239,19 @@ export const findAvailableAssigneesForProject = async (
       u.name,
       u.email,
       ep.employee_code,
-      ep.job_title
+      ep.job_title,
+      r.name AS role
     FROM project_members pm
     INNER JOIN users u ON u.id = pm.user_id
+    INNER JOIN roles r ON r.id = u.role_id
     LEFT JOIN employee_profiles ep ON ep.user_id = u.id
     WHERE pm.project_id = ?
       AND u.organization_id = ?
-      AND u.role_id = 4
+      AND u.role_id IN (?)
       AND u.status = 'active'
     ORDER BY u.name ASC
     `,
-    [projectId, organizationId]
+    [projectId, organizationId, allowedRoleIds]
   );
 
   return rows;
@@ -252,7 +259,8 @@ export const findAvailableAssigneesForProject = async (
 
 export const findAvailableAssigneesForOrganization = async (
   connection: PoolConnection,
-  organizationId: number
+  organizationId: number,
+  allowedRoleIds: number[] = [4]
 ) => {
   const [rows] = await connection.query<RowDataPacket[]>(
     `
@@ -261,15 +269,17 @@ export const findAvailableAssigneesForOrganization = async (
       u.name,
       u.email,
       ep.employee_code,
-      ep.job_title
+      ep.job_title,
+      r.name AS role
     FROM users u
+    INNER JOIN roles r ON r.id = u.role_id
     LEFT JOIN employee_profiles ep ON ep.user_id = u.id
     WHERE u.organization_id = ?
-      AND u.role_id = 4
+      AND u.role_id IN (?)
       AND u.status = 'active'
     ORDER BY u.name ASC
     `,
-    [organizationId]
+    [organizationId, allowedRoleIds]
   );
 
   return rows;

@@ -3,6 +3,7 @@ import { getTasks } from "../services/task-api";
 import TaskStatusBadge from "../components/TaskStatusBadge";
 import TaskPriorityBadge from "../components/TaskPriorityBadge";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/auth/AuthContext";
 
 interface Task {
   id: number;
@@ -30,6 +31,8 @@ const [priorityFilter, setPriorityFilter] = useState("all");
 const [taskTypeFilter, setTaskTypeFilter] = useState("all");
 
 const navigate = useNavigate();
+const { user } = useAuth();
+const canCreateTask = user?.roleId === 2 || user?.roleId === 3;
 const filteredTasks = tasks.filter((task) => {
   const matchesSearch = task.title
     .toLowerCase()
@@ -77,12 +80,14 @@ const filteredTasks = tasks.filter((task) => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Tasks</h1>
-        <button
-  onClick={() => navigate("/tasks/create")}
-  className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
->
-  + Create Task
-</button>
+        {canCreateTask && (
+          <button
+            onClick={() => navigate("/tasks/create")}
+            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            + Create Task
+          </button>
+        )}
       </div>
       
 <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">

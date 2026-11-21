@@ -10,12 +10,15 @@ import {
   getProjects,
   type Project,
 } from "@/features/projects/services/project-api";
+import { useAuth } from "@/features/auth/AuthContext";
 
 interface Task {
   id: number;
   title: string;
   description: string | null;
   project_id: number | null;
+  project_manager_id?: number | null;
+  created_by: number;
   priority: string;
   start_date: string | null;
   due_date: string | null;
@@ -28,6 +31,10 @@ const formatDate = (date: string | null) => {
 const EditTaskPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const isAdmin = user?.roleId === 2;
+  const isManager = user?.roleId === 3;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -60,6 +67,21 @@ const EditTaskPage = () => {
         setProjects(projectData);
 
         const taskData = task as Task;
+
+        const isProjectTask = taskData.project_id !== null;
+        const isManagedProject =
+          isProjectTask && taskData.project_manager_id === user?.userId;
+        const isCreatedIndependent =
+          !isProjectTask && taskData.created_by === user?.userId;
+
+        const canEdit =
+          isAdmin ||
+          (isManager && (isManagedProject || isCreatedIndependent));
+
+        if (!canEdit) {
+          setError("You do not have permission to edit this task.");
+          return;
+        }
 
         setFormData({
           title: taskData.title,

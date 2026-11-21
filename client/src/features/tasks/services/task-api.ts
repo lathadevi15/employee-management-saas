@@ -79,12 +79,30 @@ export const updateTaskAssignee = async (
 
   return response.data;
 };
+export interface Task {
+  id: number;
+  title: string;
+  description: string | null;
+  project_id: number | null;
+  project_name: string | null;
+  project_manager_id?: number | null;
+  status: string;
+  priority: string;
+  start_date: string | null;
+  due_date: string | null;
+  assigned_to: number | null;
+  assignee_name: string | null;
+  created_by: number;
+  creator_name: string;
+}
+
 export interface TaskAssignee {
   id: number;
   name: string;
   email: string;
-  employee_code: string;
+  employee_code: string | null;
   job_title: string | null;
+  role?: string;
 }
 export const getAvailableTaskAssignees = async (
   taskId: number

@@ -70,20 +70,25 @@ export async function createTaskService(
       }
     }
 
-    // Verify the assigned employee.
+    // Verify the assigned user.
     if (data.assignedTo !== null && data.assignedTo !== undefined) {
-      const [users] = await connection.execute<any[]>(
+      const allowedRoleIds =
+        actor.roleId === ORGANIZATION_ADMIN_ROLE_ID
+          ? [MANAGER_ROLE_ID, EMPLOYEE_ROLE_ID]
+          : [EMPLOYEE_ROLE_ID];
+
+      const [users] = await connection.query<RowDataPacket[]>(
         `SELECT id
          FROM users
          WHERE id = ?
            AND organization_id = ?
-           AND role_id = ?
+           AND role_id IN (?)
            AND status = 'active'
          LIMIT 1`,
         [
           data.assignedTo,
           actor.organizationId,
-          EMPLOYEE_ROLE_ID,
+          allowedRoleIds,
         ]
       );
 
@@ -285,25 +290,29 @@ export const getAvailableAssigneesService = async (
         if (projects.length === 0) {
           throw new Error("FORBIDDEN");
         }
-      } else if (
-        task.created_by !== actor.userId &&
-        task.assigned_to !== actor.userId
-      ) {
+      } else if (task.created_by !== actor.userId) {
         throw new Error("FORBIDDEN");
       }
     }
+
+    const allowedRoleIds =
+      actor.roleId === ORGANIZATION_ADMIN_ROLE_ID
+        ? [MANAGER_ROLE_ID, EMPLOYEE_ROLE_ID]
+        : [EMPLOYEE_ROLE_ID];
 
     if (task.project_id !== null) {
       return await findAvailableAssigneesForProject(
         connection,
         actor.organizationId,
-        task.project_id
+        task.project_id,
+        allowedRoleIds
       );
     }
 
     return await findAvailableAssigneesForOrganization(
       connection,
-      actor.organizationId
+      actor.organizationId,
+      allowedRoleIds
     );
   } finally {
     connection.release();
@@ -364,29 +373,31 @@ export const updateTaskAssigneeService = async (
         if (projects.length === 0) {
           throw new Error("FORBIDDEN");
         }
-      } else if (
-        task.created_by !== actor.userId &&
-        task.assigned_to !== actor.userId
-      ) {
+      } else if (task.created_by !== actor.userId) {
         throw new Error("FORBIDDEN");
       }
     }
 
-    // If an employee ID is provided, validate the employee.
+    // If an assignee ID is provided, validate the user.
     if (assignedTo !== null) {
-      const [employees] = await connection.query<RowDataPacket[]>(
+      const allowedRoleIds =
+        actor.roleId === ORGANIZATION_ADMIN_ROLE_ID
+          ? [MANAGER_ROLE_ID, EMPLOYEE_ROLE_ID]
+          : [EMPLOYEE_ROLE_ID];
+
+      const [assignees] = await connection.query<RowDataPacket[]>(
         `
         SELECT id
         FROM users
         WHERE id = ?
           AND organization_id = ?
-          AND role_id = 4
+          AND role_id IN (?)
           AND status = 'active'
         `,
-        [assignedTo, actor.organizationId]
+        [assignedTo, actor.organizationId, allowedRoleIds]
       );
 
-      if (employees.length === 0) {
+      if (assignees.length === 0) {
         throw new Error("INVALID_ASSIGNEE");
       }
 
@@ -429,8 +440,14 @@ export const updateTaskStatusService = async (
   taskId: number,
   input: unknown
 ) => {
-  // Only employees can update task status.
-  if (actor.roleId !== EMPLOYEE_ROLE_ID) {
+  // Allow Admin, Manager, and Employee to update task status
+  if (
+    ![
+      ORGANIZATION_ADMIN_ROLE_ID,
+      MANAGER_ROLE_ID,
+      EMPLOYEE_ROLE_ID,
+    ].includes(actor.roleId)
+  ) {
     throw new Error("FORBIDDEN");
   }
 
@@ -448,7 +465,7 @@ export const updateTaskStatusService = async (
   const connection = await db.getConnection();
 
   try {
-    // Find the task within the employee's organization.
+    // Find the task within the actor's organization.
     const task = await findTaskById(
       connection,
       actor.organizationId,
@@ -459,8 +476,8 @@ export const updateTaskStatusService = async (
       throw new Error("TASK_NOT_FOUND");
     }
 
-    // Verify that the task belongs to this employee.
-    if (task.assigned_to !== actor.userId) {
+    // Verify that the task is assigned to this user.
+    if (task.assigned_to === null || task.assigned_to !== actor.userId) {
       throw new Error("FORBIDDEN");
     }
 
