@@ -6,6 +6,7 @@ import employeeRoutes from "./modules/employees/employee.routes.js";
 import departmentRoutes from "./modules/departments/department.routes.js";
 import projectRoutes from "./modules/projects/project.routes.js";
 import taskRoutes from "./modules/tasks/task.routes";
+import notificationRoutes from "./modules/notifications/notification.routes.js";
 
 
 const app = express();
@@ -25,5 +26,6 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 export default app;
