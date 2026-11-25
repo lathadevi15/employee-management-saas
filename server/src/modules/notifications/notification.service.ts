@@ -1,5 +1,6 @@
 
 import { db } from "../../config/database.js";
+import { PoolConnection } from "mysql2/promise";
 
 import {
   findNotificationsByUser,
@@ -7,11 +8,19 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   deleteNotification,
+  createNotification 
 } from "./notification.repository.js";
 
 import { getNotificationsSchema } from "./notification.schema.js";
-import { NotificationActor } from "./notification.types.js";
+import { NotificationActor, CreateNotificationInput } from "./notification.types.js";
 
+
+export async function createNotificationService(
+  connection: PoolConnection,
+  input: CreateNotificationInput
+) {
+  return await createNotification(connection, input);
+}
 // Get notifications for the authenticated user.
 export async function getNotificationsService(
   actor: NotificationActor,

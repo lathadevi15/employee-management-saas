@@ -10,6 +10,7 @@ import {
   updateProject ,deleteProject
 } from "./project.repository.js";
 import { RowDataPacket } from "mysql2/promise";
+import { createNotificationService } from "../notifications/notification.service.js";
 
 interface ProjectActor {
   userId: number;
@@ -316,6 +317,7 @@ export async function getAvailableProjectMembersService(
 }
 
 
+
 export async function addProjectMembersService(
   actor: ProjectActor,
   projectId: number,
@@ -396,7 +398,26 @@ export async function addProjectMembersService(
       throw new Error("MEMBERS_ALREADY_ASSIGNED");
     }
 
+    // Add project members
     await addProjectMembers(connection, projectId, userIds);
+
+    // Create an invitation notification for each new member
+    for (const userId of userIds) {
+      if (userId === actor.userId) {
+        continue;
+      }
+
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId,
+        actorId: actor.userId,
+        type: "project_invitation",
+        title: "Added to a project",
+        message: `You have been added to the project "${project.name}".`,
+        entityType: "project",
+        entityId: projectId,
+      });
+    }
 
     await connection.commit();
 
@@ -495,6 +516,7 @@ if (targetRows.length === 0) {
     connection.release();
   }
 }
+
 
 
 
@@ -615,6 +637,49 @@ export async function updateProjectService(
       actor.organizationId,
       projectId
     );
+    if (!updatedProject) {
+  throw new Error("PROJECT_NOT_FOUND");
+}
+
+    // Collect active project members from this organization.
+    const [memberRows] =
+      await connection.execute<RowDataPacket[]>(
+        `SELECT pm.user_id
+         FROM project_members pm
+         INNER JOIN users u ON u.id = pm.user_id
+         WHERE pm.project_id = ?
+           AND u.organization_id = ?
+           AND u.status = 'active'`,
+        [projectId, actor.organizationId]
+      );
+
+    // Include the current project manager.
+    const recipients = new Set<number>(
+      memberRows.map((member) => Number(member.user_id))
+    );
+
+    if (updatedProject?.manager_id !== null &&
+        updatedProject?.manager_id !== undefined) {
+      recipients.add(Number(updatedProject.manager_id));
+    }
+
+    // Notify other project members.
+    for (const recipientId of recipients) {
+      if (recipientId === actor.userId) {
+        continue;
+      }
+
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId: recipientId,
+        actorId: actor.userId,
+        type: "project_updated",
+        title: "Project updated",
+        message: `The project "${updatedProject.name}" has been updated.`,
+        entityType: "project",
+        entityId: projectId,
+      });
+    }
 
     await connection.commit();
 

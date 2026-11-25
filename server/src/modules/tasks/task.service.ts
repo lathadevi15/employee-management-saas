@@ -14,6 +14,7 @@ import {
 } from "./task.repository";
 import { createTaskSchema, updateTaskStatusSchema, updateTaskSchema  } from "./task.schema";
 import { RowDataPacket } from "mysql2/promise";
+import { createNotificationService } from "../notifications/notification.service";
 
 export interface TaskActor {
   userId: number;
@@ -24,6 +25,7 @@ export interface TaskActor {
 const ORGANIZATION_ADMIN_ROLE_ID = 2;
 const MANAGER_ROLE_ID = 3;
 const EMPLOYEE_ROLE_ID = 4;
+
 
 export async function createTaskService(
   actor: TaskActor,
@@ -47,6 +49,8 @@ export async function createTaskService(
   const connection = await db.getConnection();
 
   try {
+    await connection.beginTransaction();
+
     // Verify project access when the task is project-linked.
     if (data.projectId !== null && data.projectId !== undefined) {
       const [projects] = await connection.execute<any[]>(
@@ -113,17 +117,43 @@ export async function createTaskService(
       }
     }
 
+    // Create the task.
     const taskId = await createTask(connection, {
       ...data,
       organizationId: actor.organizationId,
       createdBy: actor.userId,
     });
 
+    // Create an in-app notification for the assignee.
+    // Do not notify the actor about their own action.
+    if (
+      data.assignedTo !== null &&
+      data.assignedTo !== undefined &&
+      data.assignedTo !== actor.userId
+    ) {
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId: data.assignedTo,
+        actorId: actor.userId,
+        type: "task_assigned",
+        title: "New task assigned",
+        message: `You have been assigned a new task: ${data.title}.`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    }
+
+    await connection.commit();
+
     return { taskId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
   } finally {
     connection.release();
   }
 }
+
 
 
 export async function getTasksService(actor: TaskActor) {
@@ -320,6 +350,7 @@ export const getAvailableAssigneesService = async (
 };
 
 
+
 export const updateTaskAssigneeService = async (
   actor: TaskActor,
   taskId: number,
@@ -346,6 +377,8 @@ export const updateTaskAssigneeService = async (
   const connection = await db.getConnection();
 
   try {
+    await connection.beginTransaction();
+
     const task = await findTaskById(
       connection,
       actor.organizationId,
@@ -378,7 +411,7 @@ export const updateTaskAssigneeService = async (
       }
     }
 
-    // If an assignee ID is provided, validate the user.
+    // Validate the new assignee
     if (assignedTo !== null) {
       const allowedRoleIds =
         actor.roleId === ORGANIZATION_ADMIN_ROLE_ID
@@ -401,7 +434,7 @@ export const updateTaskAssigneeService = async (
         throw new Error("INVALID_ASSIGNEE");
       }
 
-      // Project-linked tasks require project membership.
+      // Project-linked tasks require project membership
       if (task.project_id !== null) {
         const [members] = await connection.query<RowDataPacket[]>(
           `
@@ -419,6 +452,20 @@ export const updateTaskAssigneeService = async (
       }
     }
 
+    // Previous assignee
+    const previousAssignee = task.assigned_to;
+
+    // Avoid unnecessary updates and notifications
+    if (previousAssignee === assignedTo) {
+      await connection.commit();
+
+      return {
+        taskId,
+        assignedTo,
+      };
+    }
+
+    // Update task assignment
     await updateTaskAssignee(
       connection,
       actor.organizationId,
@@ -426,14 +473,55 @@ export const updateTaskAssigneeService = async (
       assignedTo
     );
 
+    // Notify previous assignee
+    if (
+      previousAssignee !== null &&
+      previousAssignee !== actor.userId
+    ) {
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId: previousAssignee,
+        actorId: actor.userId,
+        type: "task_reassigned",
+        title: "Task reassigned",
+        message: `The assignment of task "${task.title}" has changed.`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    }
+
+    // Notify new assignee
+    if (
+      assignedTo !== null &&
+      assignedTo !== actor.userId
+    ) {
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId: assignedTo,
+        actorId: actor.userId,
+        type: "task_reassigned",
+        title: "New task assigned",
+        message: `Task "${task.title}" has been assigned to you.`,
+        entityType: "task",
+        entityId: taskId,
+      });
+    }
+
+    await connection.commit();
+
     return {
       taskId,
       assignedTo,
     };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
   } finally {
     connection.release();
   }
 };
+
+
 
 export const updateTaskStatusService = async (
   actor: TaskActor,
@@ -455,7 +543,7 @@ export const updateTaskStatusService = async (
     throw new Error("INVALID_TASK_ID");
   }
 
-  // Validate the requested status.
+  // Validate the requested status
   const validation = updateTaskStatusSchema.safeParse(input);
 
   if (!validation.success) {
@@ -465,7 +553,9 @@ export const updateTaskStatusService = async (
   const connection = await db.getConnection();
 
   try {
-    // Find the task within the actor's organization.
+    await connection.beginTransaction();
+
+    // Find the task within the actor's organization
     const task = await findTaskById(
       connection,
       actor.organizationId,
@@ -476,23 +566,102 @@ export const updateTaskStatusService = async (
       throw new Error("TASK_NOT_FOUND");
     }
 
-    // Verify that the task is assigned to this user.
-    if (task.assigned_to === null || task.assigned_to !== actor.userId) {
+    // Verify that the task is assigned to this user
+    if (
+      task.assigned_to === null ||
+      task.assigned_to !== actor.userId
+    ) {
       throw new Error("FORBIDDEN");
     }
 
-    // Update task status.
+    const newStatus = validation.data.status;
+
+    // Avoid unnecessary updates and notifications
+    if (task.status === newStatus) {
+      await connection.commit();
+
+      return {
+        taskId,
+        status: newStatus,
+      };
+    }
+
+    // Update task status
     await updateTaskStatus(
       connection,
       actor.organizationId,
       taskId,
-      validation.data.status
+      newStatus
     );
+
+    // Collect notification recipients
+    const recipients = new Set<number>();
+
+    // Task creator
+    recipients.add(task.created_by);
+
+    // Relevant Project Manager
+    if (task.project_id !== null) {
+      const [projects] = await connection.query<RowDataPacket[]>(
+        `
+        SELECT manager_id
+        FROM projects
+        WHERE id = ?
+          AND organization_id = ?
+        `,
+        [task.project_id, actor.organizationId]
+      );
+
+      if (
+        projects.length > 0 &&
+        projects[0].manager_id !== null
+      ) {
+        recipients.add(projects[0].manager_id);
+      }
+    }
+
+    // Select notification type and message
+    const isCompleted = newStatus === "completed";
+
+    const notificationType = isCompleted
+      ? "task_completed"
+      : "task_status_updated";
+
+    const title = isCompleted
+      ? "Task completed"
+      : "Task status updated";
+
+    const message = isCompleted
+      ? `Task "${task.title}" has been completed.`
+      : `The status of task "${task.title}" has been updated to ${newStatus.replace(/_/g, " ")}.`;
+
+    // Create notifications, excluding the actor
+    for (const recipientId of recipients) {
+      if (recipientId === actor.userId) {
+        continue;
+      }
+
+      await createNotificationService(connection, {
+        organizationId: actor.organizationId,
+        userId: recipientId,
+        actorId: actor.userId,
+        type: notificationType,
+        title,
+        message,
+        entityType: "task",
+        entityId: taskId,
+      });
+    }
+
+    await connection.commit();
 
     return {
       taskId,
-      status: validation.data.status,
+      status: newStatus,
     };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
   } finally {
     connection.release();
   }
